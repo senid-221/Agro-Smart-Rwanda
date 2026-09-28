@@ -10,6 +10,8 @@ const state = {
   lang: localStorage.getItem('as_lang') || null,
   name: localStorage.getItem('as_name') || '',
   user: JSON.parse(localStorage.getItem('as_user') || 'null'),
+  accounts: JSON.parse(localStorage.getItem('as_accounts') || '[]'),
+  onboarded: localStorage.getItem('as_onboarded') === '1' || !!localStorage.getItem('as_name'),
   route: { name: 'home' },
   history: JSON.parse(localStorage.getItem('as_history') || '[]'),
   deferredInstall: null
@@ -56,9 +58,26 @@ const app = {
     render()
   },
   login(id, phone) {
+    const acc = state.accounts.find(a =>
+      a.id.toLowerCase() === id.toLowerCase() && a.phone === phone)
+    if (!acc) return 'notfound'
+    state.user = { id: acc.id, phone: acc.phone, at: Date.now() }
+    localStorage.setItem('as_user', JSON.stringify(state.user))
+    render()
+    return null
+  },
+  signup(id, phone) {
+    if (state.accounts.some(a => a.id.toLowerCase() === id.toLowerCase())) return 'exists'
+    state.accounts.push({ id, phone, at: Date.now() })
+    localStorage.setItem('as_accounts', JSON.stringify(state.accounts))
     state.user = { id, phone, at: Date.now() }
     localStorage.setItem('as_user', JSON.stringify(state.user))
     render()
+    return null
+  },
+  setOnboarded() {
+    state.onboarded = true
+    localStorage.setItem('as_onboarded', '1')
   },
   logout() {
     state.user = null
@@ -157,7 +176,7 @@ function render() {
     renderLogin(main, app)
     return
   }
-  if (!state.lang) {
+  if (!state.onboarded) {
     const el = document.getElementById('app')
     el.innerHTML = ''
     const main = document.createElement('main')

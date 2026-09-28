@@ -3,36 +3,57 @@ const { makeT } = AS
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
 
 AS.renderLogin = function (container, app) {
+  let mode = 'login'
+  const draft = { id: '', phone: '' }
+
   const draw = () => {
     const lg = app.lang || 'rw'
     const tt = makeT(lg)
+    const signup = mode === 'signup'
     container.innerHTML = `
       <div class="login">
         <button class="corner-lang" id="langCorner">${lg === 'rw' ? 'EN' : 'RW'}</button>
         <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
         <h1>${tt('appName')}</h1>
-        <p class="tagline">${tt('login_sub')}</p>
-        <div class="field">
-          <label for="loginId">${tt('login_id')}</label>
-          <input id="loginId" autocomplete="username" placeholder="AGRO-0001" />
+        <p class="tagline">${tt(signup ? 'auth_signup_sub' : 'login_sub')}</p>
+        <div class="auth-tabs">
+          <button class="auth-tab ${signup ? '' : 'active'}" id="tabLogin">${tt('auth_tab_login')}</button>
+          <button class="auth-tab ${signup ? 'active' : ''}" id="tabSignup">${tt('auth_tab_signup')}</button>
         </div>
-        <div class="field">
-          <label for="loginPhone">${tt('login_phone')}</label>
-          <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="07XX XXX XXX" />
+        <div class="auth-card">
+          <div class="field">
+            <img class="f-ico" src="img/id-card.png" alt="">
+            <input id="loginId" autocomplete="username" placeholder="${tt('login_id')}" value="${esc(draft.id)}" />
+          </div>
+          <div class="field">
+            <img class="f-ico" src="img/phone.png" alt="">
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${tt('login_phone')}" value="${esc(draft.phone)}" />
+          </div>
+          <div class="err" id="loginErr"></div>
+          <button class="btn btn-primary" id="loginBtn">${tt(signup ? 'auth_signup_btn' : 'login_btn')} →</button>
+          <p class="auth-hint">${tt(signup ? 'auth_hint_signup' : 'auth_hint_login')}</p>
         </div>
-        <div class="err" id="loginErr"></div>
-        <button class="btn btn-primary" id="loginBtn">${tt('login_btn')} →</button>
       </div>`
-    container.querySelector('#langCorner').onclick = () => app.setLang(lg === 'rw' ? 'en' : 'rw')
+
+    const readDraft = () => {
+      draft.id = container.querySelector('#loginId').value
+      draft.phone = container.querySelector('#loginPhone').value
+    }
+    container.querySelector('#langCorner').onclick = () => { readDraft(); app.setLang(lg === 'rw' ? 'en' : 'rw') }
+    container.querySelector('#tabLogin').onclick = () => { if (mode !== 'login') { readDraft(); mode = 'login'; draw() } }
+    container.querySelector('#tabSignup').onclick = () => { if (mode !== 'signup') { readDraft(); mode = 'signup'; draw() } }
     container.querySelector('#loginBtn').onclick = () => {
       const id = container.querySelector('#loginId').value.trim()
       const phone = container.querySelector('#loginPhone').value.replace(/[\s-]/g, '')
       const err = container.querySelector('#loginErr')
       if (!id) { err.textContent = tt('login_err_id'); return }
       if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
-      app.login(id, phone)
+      const problem = signup ? app.signup(id, phone) : app.login(id, phone)
+      if (problem === 'notfound') err.textContent = tt('auth_err_notfound')
+      if (problem === 'exists') err.textContent = tt('auth_err_exists')
     }
   }
+
   draw()
 }
 
@@ -63,6 +84,7 @@ AS.renderOnboarding = function (container, app) {
     }
     container.querySelector('#startBtn').onclick = () => {
       const name = (container.querySelector('#nameInput').value || '').trim()
+      app.setOnboarded()
       app.setLang(lg)
       app.setName(name)
       app.go('home')
