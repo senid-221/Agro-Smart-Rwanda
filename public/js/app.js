@@ -80,7 +80,7 @@ function shell() {
         <h1>🌿 ${tr('appName')}</h1>
         <div class="sub">${tr('tagline')}</div>
       </div>
-      <button class="lang-chip" id="langToggle">${state.lang === 'rw' ? '🇬🇧 EN' : '🇷🇼 RW'}</button>
+      <button class="lang-chip" id="langToggle">${state.lang === 'rw' ? 'EN' : 'RW'}</button>
     </div>`
   header.querySelector('#langToggle').onclick = () =>
     app.setLang(state.lang === 'rw' ? 'en' : 'rw')

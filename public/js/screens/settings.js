@@ -12,12 +12,12 @@ AS.renderOnboarding = function (container, app) {
         <h1>${tt('appName')}</h1>
         <p class="tagline">${tt('tagline')}</p>
         <div class="lang-picker">
-          <button class="lang-option ${chosen === 'rw' ? 'active' : ''}" data-lang="rw">🇷🇼 Ikinyarwanda</button>
-          <button class="lang-option ${chosen === 'en' ? 'active' : ''}" data-lang="en">🇬🇧 English</button>
+          <button class="lang-option ${chosen === 'rw' ? 'active' : ''}" data-lang="rw">Ikinyarwanda</button>
+          <button class="lang-option ${chosen === 'en' ? 'active' : ''}" data-lang="en">English</button>
         </div>
         <div class="onb-features">
           <div class="onb-feature"><span class="emoji">📷</span><span><span class="t">${tt('onb_f1_t')}</span><br><span class="d">${tt('onb_f1_d')}</span></span></div>
-          <div class="onb-feature"><span class="emoji">🇷🇼</span><span><span class="t">${tt('onb_f2_t')}</span><br><span class="d">${tt('onb_f2_d')}</span></span></div>
+          <div class="onb-feature"><span class="emoji">🌍</span><span><span class="t">${tt('onb_f2_t')}</span><br><span class="d">${tt('onb_f2_d')}</span></span></div>
           <div class="onb-feature"><span class="emoji">📖</span><span><span class="t">${tt('onb_f3_t')}</span><br><span class="d">${tt('onb_f3_d')}</span></span></div>
         </div>
         <button class="btn btn-primary" id="startBtn">${tt('onb_start')} →</button>
@@ -50,8 +50,8 @@ AS.renderSettings = function (container, app) {
         <div class="desc">${tr('settings_lang_desc')}</div>
       </div>
       <div class="chip-row" style="flex-wrap:nowrap">
-        <button class="chip ${lang === 'rw' ? 'active' : ''}" data-l="rw">🇷🇼 RW</button>
-        <button class="chip ${lang === 'en' ? 'active' : ''}" data-l="en">🇬🇧 EN</button>
+        <button class="chip ${lang === 'rw' ? 'active' : ''}" data-l="rw">RW</button>
+        <button class="chip ${lang === 'en' ? 'active' : ''}" data-l="en">EN</button>
       </div>
     </div>
 
