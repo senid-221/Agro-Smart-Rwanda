@@ -118,8 +118,6 @@ AS.T = {
 
   // settings / more
   settings_title: { en: 'Settings & More', rw: 'Amagenamiterere n\'Ibindi' },
-  settings_lang: { en: 'Language', rw: 'Ururimi' },
-  settings_lang_desc: { en: 'Kinyarwanda or English', rw: 'Ikinyarwanda cyangwa Icyongereza' },
   settings_install: { en: 'Install app on phone', rw: 'Shyira porogaramu kuri telefone' },
   settings_install_desc: { en: 'Use AgroSmart offline, like a real app', rw: 'Koresha AgroSmart nta internet, nka porogaramu nyayo' },
   settings_installed: { en: 'App is installed', rw: 'Porogaramu yashyizwemo' },
