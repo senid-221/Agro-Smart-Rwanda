@@ -326,6 +326,79 @@ body {
 .login .err { color: var(--red); font-size: 12.5px; font-weight: 600; min-height: 18px; margin: 2px 0 8px; text-align: left; }
 .auth-hint { margin-top: 12px; font-size: 12px; color: var(--text-soft); text-align: center; }
 
+/* ---------- store ---------- */
+.store-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cart-btn {
+  position: relative; width: 40px; height: 40px; border-radius: 50%;
+  border: 1.5px solid var(--border); background: var(--card); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.cart-btn img { width: 20px; height: 20px; }
+.cart-badge {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 999px; background: var(--red); color: #fff; font-size: 10.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.store-search {
+  width: 100%; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--border);
+  background: var(--card); font-size: 13.5px; outline: none; color: var(--text); margin-bottom: 10px;
+}
+.store-search:focus { border-color: var(--green-500); }
+.store-chips { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; margin-bottom: 12px; }
+.prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.prod-card {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 12px 10px; border-radius: 14px; border: 1.5px solid var(--border);
+  background: var(--card); cursor: pointer; text-align: left;
+}
+.prod-card.added { border-color: var(--green-500); background: var(--green-100); }
+.prod-emoji { font-size: 26px; line-height: 1.2; }
+.prod-emoji.small { font-size: 22px; }
+.prod-name { font-size: 12.5px; font-weight: 700; color: var(--text); }
+.prod-price { font-size: 12.5px; font-weight: 700; color: var(--green-700); }
+.prod-unit { font-size: 10.5px; color: var(--text-soft); }
+.prod-add {
+  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--green-700); color: #fff; font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cart-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; margin-bottom: 8px;
+}
+.cart-row .body { flex: 1; display: flex; flex-direction: column; }
+.cart-row .name { font-size: 13px; font-weight: 700; }
+.cart-row .meta { font-size: 11px; color: var(--text-soft); }
+.qty-box { display: flex; align-items: center; gap: 8px; }
+.qty-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--bg); font-size: 14px; font-weight: 700; cursor: pointer; color: var(--green-900);
+}
+.line-total { font-size: 12px; color: var(--green-700); min-width: 74px; text-align: right; }
+.cart-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px; font-size: 14px; margin-top: 4px;
+}
+.order-row { cursor: default; }
+
+/* ---------- assistant ---------- */
+.chat-log {
+  display: flex; flex-direction: column; gap: 8px; min-height: 200px; max-height: 46vh;
+  overflow-y: auto; padding: 4px 2px; margin-bottom: 10px;
+}
+.bubble {
+  max-width: 82%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.45;
+  white-space: pre-line;
+}
+.bubble.user { align-self: flex-end; background: var(--green-700); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.ai { align-self: flex-start; background: var(--card); border: 1.5px solid var(--border); border-bottom-left-radius: 4px; }
+.chat-input-row { display: flex; gap: 8px; align-items: center; }
+.chat-input-row .store-search { margin-bottom: 0; flex: 1; }
+.chat-send { width: 46px; height: 42px; padding: 0; flex: none; }
+.policy-card { margin-bottom: 10px; }
+.policy-list { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-soft); }
+.policy-list li { margin-bottom: 4px; }
+
 /* ---------- misc ---------- */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-soft); }
 .empty-state .emoji { font-size: 44px; display: block; margin-bottom: 10px; }

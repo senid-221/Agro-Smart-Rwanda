@@ -66,6 +66,16 @@ AS.renderHome = function (container, app) {
         <span class="label">${tr('home_feature_diseases')}</span>
         <span class="desc">${tr('home_feature_diseases_d')}</span>
       </button>
+      <button class="feature-card" data-go="store">
+        <img class="fico" src="img/cart.png" alt="">
+        <span class="label">${tr('home_feature_store')}</span>
+        <span class="desc">${tr('home_feature_store_d')}</span>
+      </button>
+      <button class="feature-card" data-go="assistant">
+        <img class="fico" src="img/chat.png" alt="">
+        <span class="label">${tr('home_feature_ai')}</span>
+        <span class="desc">${tr('home_feature_ai_d')}</span>
+      </button>
     </div>
 
     <div class="tip-card"><b>💡 ${tr('home_tip')}:</b> ${TIPS[lang][dayIndex]}</div>

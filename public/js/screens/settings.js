@@ -131,6 +131,14 @@ AS.renderSettings = function (container, app) {
       <span class="arrow">›</span>
     </div>
 
+    <div class="setting-row" id="ordersRow" style="cursor:pointer">
+      <div>
+        <div class="label"><img class="ico" src="img/cart.png" alt=""> ${tr('store_orders')}</div>
+        <div class="desc">${tr('orders_desc')}</div>
+      </div>
+      <span class="arrow">›</span>
+    </div>
+
     <div class="setting-row" id="resetRow" style="cursor:pointer">
       <div>
         <div class="label"><img class="ico" src="img/trash.png" alt=""> ${tr('settings_reset')}</div>
@@ -171,6 +179,7 @@ AS.renderSettings = function (container, app) {
     container.querySelector('#installRow').after(help)
   }
   container.querySelector('#moreRow').onclick = () => app.go('fertilizer')
+  container.querySelector('#ordersRow').onclick = () => app.go('orders')
   container.querySelector('#resetRow').onclick = () => {
     if (confirm('OK?')) app.clearHistory()
   }

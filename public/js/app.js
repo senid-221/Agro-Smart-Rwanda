@@ -3,7 +3,8 @@ const { makeT } = AS
 const {
   renderHome, renderScan, renderLearn, renderLessonDetail, renderCrops, renderCropDetail,
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
-  renderSettings, renderOnboarding, renderLogin
+  renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
+  renderAssistant
 } = AS
 
 const state = {
@@ -30,6 +31,10 @@ const ROUTES = {
   disease: { screen: 'library', render: c => renderDiseaseDetail(c, app, state.route.params.id) },
   fertilizer: { screen: 'more', render: c => renderFertilizer(c, app) },
   fertDetail: { screen: 'more', render: c => renderFertilizerDetail(c, app, state.route.params.id) },
+  store: { screen: 'store', render: c => renderStore(c, app) },
+  cart: { screen: 'store', render: c => renderCart(c, app) },
+  orders: { screen: 'store', render: c => renderOrders(c, app) },
+  assistant: { screen: 'assistant', render: c => renderAssistant(c, app) },
   settings: { screen: 'more', render: c => renderSettings(c, app) }
 }
 
@@ -151,7 +156,7 @@ function shell() {
   nav.className = 'bottom-nav'
   const items = [
     { key: 'home', icon: 'img/home.png', label: tr('nav_home') },
-    { key: 'learn', icon: 'img/book.png', label: tr('nav_learn') },
+    { key: 'store', icon: 'img/cart.png', label: tr('nav_store') },
     { key: 'scan', icon: 'img/camera.png', label: tr('nav_scan') },
     { key: 'library', icon: 'img/leaf.png', label: tr('nav_library') },
     { key: 'more', icon: 'img/settings.png', label: tr('nav_more') }
