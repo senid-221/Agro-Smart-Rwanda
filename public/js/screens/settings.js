@@ -8,7 +8,7 @@ AS.renderOnboarding = function (container, app) {
     const tt = makeT(chosen)
     container.innerHTML = `
       <div class="onboarding">
-        <img class="logo" src="icon.svg" alt="AgroSmart Rwanda" />
+        <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
         <h1>${tt('appName')}</h1>
         <p class="tagline">${tt('tagline')}</p>
         <div class="lang-picker">
