@@ -8,6 +8,7 @@ const {
 
 const state = {
   lang: localStorage.getItem('as_lang') || null,
+  name: localStorage.getItem('as_name') || '',
   route: { name: 'home' },
   history: JSON.parse(localStorage.getItem('as_history') || '[]'),
   deferredInstall: null
@@ -32,6 +33,7 @@ const ROUTES = {
 const app = {
   t,
   get lang() { return state.lang },
+  get name() { return state.name },
   get route() { return state.route },
   get history() { return state.history },
   go(name, params = {}) {
@@ -43,6 +45,12 @@ const app = {
     state.lang = lang
     localStorage.setItem('as_lang', lang)
     document.documentElement.lang = lang
+    render()
+  },
+  setName(name) {
+    state.name = name
+    if (name) localStorage.setItem('as_name', name)
+    else localStorage.removeItem('as_name')
     render()
   },
   addHistory(entry) {

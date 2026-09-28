@@ -1,5 +1,6 @@
 (function () {
 const { makeT } = AS
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
 
 AS.renderOnboarding = function (container, app) {
   let chosen = app.lang || 'rw'
@@ -11,6 +12,7 @@ AS.renderOnboarding = function (container, app) {
         <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
         <h1>${tt('appName')}</h1>
         <p class="tagline">${tt('tagline')}</p>
+        <input class="name-input" id="nameInput" placeholder="${tt('your_name')}" value="${esc(app.name || '')}" autocomplete="given-name" />
         <div class="lang-picker">
           <button class="lang-option ${chosen === 'rw' ? 'active' : ''}" data-lang="rw">Ikinyarwanda</button>
           <button class="lang-option ${chosen === 'en' ? 'active' : ''}" data-lang="en">English</button>
@@ -29,7 +31,9 @@ AS.renderOnboarding = function (container, app) {
       }
     })
     container.querySelector('#startBtn').onclick = () => {
+      const name = (container.querySelector('#nameInput').value || '').trim()
       app.setLang(chosen)
+      app.setName(name)
       app.go('home')
     }
   }
@@ -53,6 +57,14 @@ AS.renderSettings = function (container, app) {
         <button class="chip ${lang === 'rw' ? 'active' : ''}" data-l="rw">RW</button>
         <button class="chip ${lang === 'en' ? 'active' : ''}" data-l="en">EN</button>
       </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="label">👤 ${tr('your_name')}</div>
+        <div class="desc">${tr('settings_name_desc')}</div>
+      </div>
+      <input class="name-input" id="nameInput" value="${esc(app.name || '')}" placeholder="${tr('your_name')}" />
     </div>
 
     <div class="setting-row" id="installRow" style="cursor:pointer">
@@ -86,6 +98,8 @@ AS.renderSettings = function (container, app) {
   `
 
   container.querySelectorAll('[data-l]').forEach(b => (b.onclick = () => app.setLang(b.dataset.l)))
+  const nameInput = container.querySelector('#nameInput')
+  nameInput.onchange = () => app.setName(nameInput.value.trim())
   container.querySelector('#installRow').onclick = async () => {
     const ev = window.__installEvent
     if (ev) {

@@ -272,6 +272,14 @@ body {
 }
 .lang-option.active { border-color: var(--green-700); background: var(--green-100); color: var(--green-900); }
 
+.name-input {
+  border: 1.5px solid var(--border); border-radius: 10px; padding: 6px 10px;
+  font-size: 13px; font-weight: 600; color: var(--text); background: var(--bg);
+  width: 140px; text-align: center; outline: none;
+}
+.name-input:focus { border-color: var(--green-500); }
+.onboarding .name-input { width: 100%; padding: 10px; margin-bottom: 14px; text-align: left; }
+
 /* ---------- misc ---------- */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-soft); }
 .empty-state .emoji { font-size: 44px; display: block; margin-bottom: 10px; }

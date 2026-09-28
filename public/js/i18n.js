@@ -23,10 +23,10 @@ AS.T = {
   onb_start: { en: 'Start Farming Smart', rw: 'Tangira Guhinga Neza' },
 
   // home
-  home_greeting_morning: { en: 'Good morning', rw: 'Muraho (mu gitondo)' },
-  home_greeting_day: { en: 'Good day', rw: 'Muraho (ku manywa)' },
-  home_greeting_evening: { en: 'Good evening', rw: 'Muraho (nimugoroba)' },
-  home_farmer: { en: 'Farmer', rw: 'Muhinzi' },
+  home_greeting: { en: 'Hello, {name}!', rw: 'Muraho neza {name}!' },
+  home_greeting_generic: { en: 'Hello!', rw: 'Muraho neza!' },
+  your_name: { en: 'Your name', rw: 'Amazina yawe' },
+  settings_name_desc: { en: 'Used to greet you on the home screen', rw: 'Akoreshwa mu kuramutsa ku ahabanza' },
   home_scan_title: { en: 'Is your crop sick?', rw: 'Igihingwa cyawe kirarwaye?' },
   home_scan_desc: { en: 'Upload a photo or video — AI diagnoses it in seconds and tells you the treatment.', rw: 'Shyiramo ifoto cyangwa video — AI iyisuzuma mu masegonda ikakubwira umuti.' },
   home_scan_btn: { en: 'Scan now', rw: 'Suzuma noneho' },

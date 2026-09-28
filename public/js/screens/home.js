@@ -31,8 +31,8 @@ const TIPS = {
 AS.renderHome = function (container, app) {
   const tr = app.t()
   const lang = app.lang
-  const h = new Date().getHours()
-  const greeting = h < 12 ? tr('home_greeting_morning') : h < 17 ? tr('home_greeting_day') : tr('home_greeting_evening')
+  const name = (app.name || '').trim()
+  const greeting = name ? tr('home_greeting').replace('{name}', name) : tr('home_greeting_generic')
   const dayIndex = new Date().getDate() % TIPS[lang].length
 
   container.innerHTML = `
@@ -44,7 +44,7 @@ AS.renderHome = function (container, app) {
       </span>
     </button>
 
-    <div class="section-title">${greeting}, ${tr('home_farmer')} 👋</div>
+    <div class="section-title">${greeting} 👋</div>
     <div class="grid-2">
       <button class="feature-card" data-go="learn">
         <span class="emoji">📖</span>
