@@ -64,6 +64,18 @@ window.addEventListener('beforeinstallprompt', e => {
   window.__installEvent = e
 })
 
+window.addEventListener('appinstalled', () => {
+  state.deferredInstall = null
+  window.__installEvent = null
+  state.installed = true
+})
+
+AS.isInstalled = () =>
+  state.installed === true ||
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.matchMedia('(display-mode: minimal-ui)').matches ||
+  window.navigator.standalone === true
+
 function shell() {
   const el = document.getElementById('app')
   el.innerHTML = ''

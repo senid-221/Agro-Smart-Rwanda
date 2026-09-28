@@ -1,6 +1,6 @@
-const CACHE = 'agrosmart-v2'
+const CACHE = 'agrosmart-v3'
 const ASSETS = [
-  '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png',
+  '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png', '/icon-192.png', '/icon-512.png',
   '/js/app.js', '/js/i18n.js', '/js/engine/detector.js',
   '/js/data/diseases.js', '/js/data/crops.js', '/js/data/fertilizers.js', '/js/data/lessons.js',
   '/js/screens/home.js', '/js/screens/scan.js', '/js/screens/learn.js',

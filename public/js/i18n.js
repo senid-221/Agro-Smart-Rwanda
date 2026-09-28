@@ -123,6 +123,10 @@ AS.T = {
   settings_install: { en: 'Install app on phone', rw: 'Shyira porogaramu kuri telefone' },
   settings_install_desc: { en: 'Use AgroSmart offline, like a real app', rw: 'Koresha AgroSmart nta internet, nka porogaramu nyayo' },
   settings_installed: { en: 'App is installed', rw: 'Porogaramu yashyizwemo' },
+  install_help_t: { en: 'How to install', rw: 'Uko wayishyira kuri telefone' },
+  install_help_android: { en: 'Android (Chrome): tap the menu ⋮, then "Add to Home Screen" or "Install app".', rw: 'Android (Chrome): kanda ⋮, hanyuma uhitemo "Add to Home Screen" cyangwa "Install app".' },
+  install_help_ios: { en: 'iPhone (Safari): tap the Share button, then "Add to Home Screen".', rw: 'iPhone (Safari): kanda Share, hanyuma uhitemo "Add to Home Screen".' },
+  install_help_note: { en: 'The one-tap install prompt only appears on HTTPS or localhost. Otherwise use the browser menu steps above.', rw: 'Buto yikora igaragara gusa kuri HTTPS cyangwa localhost. Nibitaba ibyo, koresha intambwe za menu ya browser zavuzwe hejuru.' },
   settings_about: { en: 'About', rw: 'Ibyerekeye' },
   settings_about_text: {
     en: 'AgroSmart Rwanda helps farmers diagnose crop diseases with AI and learn modern farming — built for Rwanda\'s crops, seasons and soils. Information follows RAB (Rwanda Agriculture Board) recommendations. Always consult your sector agronomist for serious outbreaks.',

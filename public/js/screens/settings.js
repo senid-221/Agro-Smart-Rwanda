@@ -58,7 +58,7 @@ AS.renderSettings = function (container, app) {
     <div class="setting-row" id="installRow" style="cursor:pointer">
       <div>
         <div class="label">📲 ${tr('settings_install')}</div>
-        <div class="desc">${window.__installEvent ? tr('settings_install_desc') : tr('settings_installed')}</div>
+        <div class="desc">${AS.isInstalled() ? tr('settings_installed') : tr('settings_install_desc')}</div>
       </div>
       <span class="arrow">›</span>
     </div>
@@ -88,7 +88,21 @@ AS.renderSettings = function (container, app) {
   container.querySelectorAll('[data-l]').forEach(b => (b.onclick = () => app.setLang(b.dataset.l)))
   container.querySelector('#installRow').onclick = async () => {
     const ev = window.__installEvent
-    if (ev) { ev.prompt(); await ev.userChoice; window.__installEvent = null; app.go('settings') }
+    if (ev) {
+      ev.prompt()
+      await ev.userChoice
+      window.__installEvent = null
+      app.go('settings')
+      return
+    }
+    if (AS.isInstalled()) return
+    const existing = container.querySelector('#installHelp')
+    if (existing) { existing.remove(); return }
+    const help = document.createElement('div')
+    help.id = 'installHelp'
+    help.className = 'tip-card'
+    help.innerHTML = `<b>${tr('install_help_t')}</b><br>${tr('install_help_android')}<br>${tr('install_help_ios')}<br><span class="progress-note">${tr('install_help_note')}</span>`
+    container.querySelector('#installRow').after(help)
   }
   container.querySelector('#moreRow').onclick = () => app.go('fertilizer')
   container.querySelector('#resetRow').onclick = () => {
