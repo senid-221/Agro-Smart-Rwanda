@@ -1,18 +1,18 @@
 // AgroSmart Rwanda — Crop disease knowledge base (Rwanda-focused)
 // colorSig: weights used by the detection engine to match leaf color patterns.
 AS.CROPS = {
-  maize:    { emoji: '🌽', en: 'Maize', rw: 'Ibigori' },
-  banana:   { emoji: '🍌', en: 'Banana', rw: 'Igitoki' },
-  bean:     { emoji: '🫘', en: 'Beans', rw: 'Ibishyimbo' },
-  cassava:  { emoji: '🥔', en: 'Cassava', rw: 'Imyumbati' },
-  potato:   { emoji: '🥔', en: 'Irish Potato', rw: 'Ibirayi' },
-  sweetpotato:{ emoji: '🍠', en: 'Sweet Potato', rw: 'Ibijumba' },
-  tomato:   { emoji: '🍅', en: 'Tomato', rw: 'Inyanya' },
-  rice:     { emoji: '🌾', en: 'Rice', rw: 'Umuceri' },
-  coffee:   { emoji: '☕', en: 'Coffee', rw: 'Ikawa' },
-  tea:      { emoji: '🍵', en: 'Tea', rw: 'Icyayi' },
-  sorghum:  { emoji: '🌾', en: 'Sorghum', rw: 'Amasaka' },
-  groundnut:{ emoji: '🥜', en: 'Groundnuts', rw: 'Ubunyobwa' }
+  maize:    { emoji: '🌽', img: 'img/crops/maize.png', en: 'Maize', rw: 'Ibigori' },
+  banana:   { emoji: '🍌', img: 'img/crops/banana.png', en: 'Banana', rw: 'Igitoki' },
+  bean:     { emoji: '🫘', img: 'img/crops/bean.png', en: 'Beans', rw: 'Ibishyimbo' },
+  cassava:  { emoji: '🥔', img: 'img/crops/cassava.png', en: 'Cassava', rw: 'Imyumbati' },
+  potato:   { emoji: '🥔', img: 'img/crops/potato.png', en: 'Irish Potato', rw: 'Ibirayi' },
+  sweetpotato:{ emoji: '🍠', img: 'img/crops/sweetpotato.png', en: 'Sweet Potato', rw: 'Ibijumba' },
+  tomato:   { emoji: '🍅', img: 'img/crops/tomato.png', en: 'Tomato', rw: 'Inyanya' },
+  rice:     { emoji: '🌾', img: 'img/crops/rice.png', en: 'Rice', rw: 'Umuceri' },
+  coffee:   { emoji: '☕', img: 'img/crops/coffee.png', en: 'Coffee', rw: 'Ikawa' },
+  tea:      { emoji: '🍵', img: 'img/crops/tea.png', en: 'Tea', rw: 'Icyayi' },
+  sorghum:  { emoji: '🌾', img: 'img/crops/sorghum.png', en: 'Sorghum', rw: 'Amasaka' },
+  groundnut:{ emoji: '🥜', img: 'img/crops/groundnut.png', en: 'Groundnuts', rw: 'Ubunyobwa' }
 }
 
 AS.DISEASES = [

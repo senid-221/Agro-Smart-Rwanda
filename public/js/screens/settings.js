@@ -2,6 +2,43 @@
 const { makeT } = AS
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
 
+AS.renderLogin = function (container, app) {
+  const draw = () => {
+    const lg = app.lang || 'rw'
+    const tt = makeT(lg)
+    container.innerHTML = `
+      <div class="login">
+        <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
+        <h1>${tt('appName')}</h1>
+        <p class="tagline">${tt('login_sub')}</p>
+        <div class="lang-picker mini">
+          <button class="lang-option ${lg === 'rw' ? 'active' : ''}" data-lg="rw">Ikinyarwanda</button>
+          <button class="lang-option ${lg === 'en' ? 'active' : ''}" data-lg="en">English</button>
+        </div>
+        <div class="field">
+          <label for="loginId">${tt('login_id')}</label>
+          <input id="loginId" autocomplete="username" placeholder="AGRO-0001" />
+        </div>
+        <div class="field">
+          <label for="loginPhone">${tt('login_phone')}</label>
+          <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="07XX XXX XXX" />
+        </div>
+        <div class="err" id="loginErr"></div>
+        <button class="btn btn-primary" id="loginBtn">${tt('login_btn')} →</button>
+      </div>`
+    container.querySelectorAll('[data-lg]').forEach(b => (b.onclick = () => app.setLang(b.dataset.lg)))
+    container.querySelector('#loginBtn').onclick = () => {
+      const id = container.querySelector('#loginId').value.trim()
+      const phone = container.querySelector('#loginPhone').value.replace(/[\s-]/g, '')
+      const err = container.querySelector('#loginErr')
+      if (!id) { err.textContent = tt('login_err_id'); return }
+      if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
+      app.login(id, phone)
+    }
+  }
+  draw()
+}
+
 AS.renderOnboarding = function (container, app) {
   let chosen = app.lang || 'rw'
 
@@ -18,9 +55,9 @@ AS.renderOnboarding = function (container, app) {
           <button class="lang-option ${chosen === 'en' ? 'active' : ''}" data-lang="en">English</button>
         </div>
         <div class="onb-features">
-          <div class="onb-feature"><span class="emoji">📷</span><span><span class="t">${tt('onb_f1_t')}</span><br><span class="d">${tt('onb_f1_d')}</span></span></div>
+          <div class="onb-feature"><span class="emoji"><img class="onb-ico" src="img/camera.png" alt=""></span><span><span class="t">${tt('onb_f1_t')}</span><br><span class="d">${tt('onb_f1_d')}</span></span></div>
           <div class="onb-feature"><span class="emoji">🌍</span><span><span class="t">${tt('onb_f2_t')}</span><br><span class="d">${tt('onb_f2_d')}</span></span></div>
-          <div class="onb-feature"><span class="emoji">📖</span><span><span class="t">${tt('onb_f3_t')}</span><br><span class="d">${tt('onb_f3_d')}</span></span></div>
+          <div class="onb-feature"><span class="emoji"><img class="onb-ico" src="img/book.png" alt=""></span><span><span class="t">${tt('onb_f3_t')}</span><br><span class="d">${tt('onb_f3_d')}</span></span></div>
         </div>
         <button class="btn btn-primary" id="startBtn">${tt('onb_start')} →</button>
       </div>`
@@ -46,11 +83,18 @@ AS.renderSettings = function (container, app) {
   const lang = app.lang
 
   container.innerHTML = `
-    <div class="section-title">${tr('settings_title')} ⚙️</div>
+    <div class="section-title">${tr('settings_title')} <img class="ico" src="img/settings.png" alt=""></div>
 
     <div class="setting-row">
       <div>
-        <div class="label">🌐 ${tr('settings_lang')}</div>
+        <div class="label"><img class="ico" src="img/id-card.png" alt=""> ${tr('settings_account')}</div>
+        <div class="desc">${esc(app.user.id)} · ${esc(app.user.phone)}</div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <div class="label"><img class="ico" src="img/language.png" alt=""> ${tr('settings_lang')}</div>
         <div class="desc">${tr('settings_lang_desc')}</div>
       </div>
       <div class="chip-row" style="flex-wrap:nowrap">
@@ -61,7 +105,7 @@ AS.renderSettings = function (container, app) {
 
     <div class="setting-row">
       <div>
-        <div class="label">👤 ${tr('your_name')}</div>
+        <div class="label"><img class="ico" src="img/user.png" alt=""> ${tr('your_name')}</div>
         <div class="desc">${tr('settings_name_desc')}</div>
       </div>
       <input class="name-input" id="nameInput" value="${esc(app.name || '')}" placeholder="${tr('your_name')}" />
@@ -69,7 +113,7 @@ AS.renderSettings = function (container, app) {
 
     <div class="setting-row" id="installRow" style="cursor:pointer">
       <div>
-        <div class="label">📲 ${tr('settings_install')}</div>
+        <div class="label"><img class="ico" src="img/download.png" alt=""> ${tr('settings_install')}</div>
         <div class="desc">${AS.isInstalled() ? tr('settings_installed') : tr('settings_install_desc')}</div>
       </div>
       <span class="arrow">›</span>
@@ -77,7 +121,7 @@ AS.renderSettings = function (container, app) {
 
     <div class="setting-row" id="moreRow" style="cursor:pointer">
       <div>
-        <div class="label">🧪 ${tr('fert_title')}</div>
+        <div class="label"><img class="ico" src="img/chemistry.png" alt=""> ${tr('fert_title')}</div>
         <div class="desc">${tr('fert_sub')}</div>
       </div>
       <span class="arrow">›</span>
@@ -85,14 +129,19 @@ AS.renderSettings = function (container, app) {
 
     <div class="setting-row" id="resetRow" style="cursor:pointer">
       <div>
-        <div class="label">🗑️ ${tr('settings_reset')}</div>
+        <div class="label"><img class="ico" src="img/trash.png" alt=""> ${tr('settings_reset')}</div>
       </div>
       <span class="arrow">›</span>
     </div>
 
+    <button class="btn btn-outline" id="logoutBtn" style="margin-top:14px">
+      <img class="btn-ico" src="img/logout.png" alt=""> ${tr('settings_logout')}
+    </button>
+
     <div class="card" style="margin-top:16px">
-      <div class="label" style="font-weight:700;margin-bottom:6px">ℹ️ ${tr('settings_about')}</div>
+      <div class="label" style="font-weight:700;margin-bottom:6px"><img class="ico" src="img/info.png" alt=""> ${tr('settings_about')}</div>
       <p style="font-size:13px;color:var(--text-soft)">${tr('settings_about_text')}</p>
+      <p class="progress-note" style="margin-top:6px">${tr('credits')}</p>
     </div>
     <p class="progress-note" style="text-align:center;margin-top:14px">🌿 ${tr('appName')} · ${tr('settings_version')}</p>
   `
@@ -122,5 +171,6 @@ AS.renderSettings = function (container, app) {
   container.querySelector('#resetRow').onclick = () => {
     if (confirm('OK?')) app.clearHistory()
   }
+  container.querySelector('#logoutBtn').onclick = () => app.logout()
 }
 })()

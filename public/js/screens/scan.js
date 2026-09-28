@@ -13,7 +13,7 @@ AS.renderScan = function (container, app) {
 
     <div id="pickSection">
       <div class="dropzone" id="dropzone">
-        <span class="emoji">📸</span>
+        <img class="dz-ico" src="img/camera.png" alt="">
         <span class="hint">${tr('scan_step1')}</span>
         <span class="sub">${tr('scan_step1_hint')}</span>
       </div>
@@ -66,7 +66,7 @@ AS.renderScan = function (container, app) {
   Object.entries(CROPS).forEach(([id, c]) => {
     const chip = document.createElement('button')
     chip.className = 'chip'
-    chip.textContent = `${c.emoji} ${c[lang]}`
+    chip.innerHTML = `<img class="chip-ico" src="${c.img}" alt=""> ${c[lang]}`
     chip.onclick = () => {
       selectedCrop = id
       chipsWrap.querySelectorAll('.chip').forEach(x => x.classList.remove('active'))
@@ -199,7 +199,7 @@ AS.renderScan = function (container, app) {
 
     rs.innerHTML = `
       <div class="result-header">
-        <span class="emoji">${crop.emoji}</span>
+        <span class="emoji"><img class="hero-crop" src="${crop.img}" alt=""></span>
         <h2 style="color:var(--green-900);font-size:19px">${d.name[lang]}</h2>
         <div class="progress-note" style="font-style:italic">${d.sci}</div>
         <div style="margin-top:8px">${sev(d.severity)}</div>
@@ -236,7 +236,7 @@ AS.renderScan = function (container, app) {
       <div class="section-title">${tr('result_other_possibilities')}</div>
       ${result.alternates.map(m => `
         <button class="list-row" data-disease="${m.disease.id}">
-          <span class="emoji">${CROPS[m.disease.crop].emoji}</span>
+          <span class="emoji"><img class="thumb" src="${CROPS[m.disease.crop].img}" alt=""></span>
           <span class="body">
             <span class="name">${m.disease.name[lang]}</span>
             <span class="meta">${m.confidence}%</span>

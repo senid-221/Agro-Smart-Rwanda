@@ -1,6 +1,6 @@
 (function () {
 const { LESSONS, LESSON_CATEGORIES } = AS
-const { CROP_GUIDES } = AS
+const { CROP_GUIDES, CROPS } = AS
 
 function backBtn(app, route, label) {
   const b = document.createElement('button')
@@ -18,7 +18,7 @@ AS.renderLearn = function (container, app) {
     <div class="section-title">${tr('learn_title')} 📖</div>
     <p class="progress-note" style="margin-bottom:14px">${tr('learn_sub')}</p>
     <button class="list-row" id="cropsRow">
-      <span class="emoji">🌽</span>
+      <span class="emoji"><img class="fico round" src="img/crops/maize.png" alt=""></span>
       <span class="body">
         <span class="name">${tr('crops_title')}</span>
         <span class="meta">${tr('crops_sub')}</span>
@@ -84,7 +84,7 @@ AS.renderCrops = function (container, app) {
     const row = document.createElement('button')
     row.className = 'list-row'
     row.innerHTML = `
-      <span class="emoji">${c.emoji}</span>
+      <span class="emoji"><img class="thumb" src="${CROPS[c.id].img}" alt=""></span>
       <span class="body">
         <span class="name">${c.name[lang]}</span>
         <span class="meta">${tr('crop_regions')}: ${c.regions[lang].split(',')[0]}…</span>
@@ -104,7 +104,7 @@ AS.renderCropDetail = function (container, app, id) {
   container.appendChild(backBtn(app, 'crops', tr('back')))
   container.insertAdjacentHTML('beforeend', `
     <div class="detail-hero">
-      <span class="emoji">${crop.emoji}</span>
+      <span class="emoji"><img class="hero-crop" src="${CROPS[crop.id].img}" alt=""></span>
       <h2>${crop.name[lang]}</h2>
       <div class="sci">📍 ${crop.regions[lang]}</div>
     </div>

@@ -3,12 +3,13 @@ const { makeT } = AS
 const {
   renderHome, renderScan, renderLearn, renderLessonDetail, renderCrops, renderCropDetail,
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
-  renderSettings, renderOnboarding
+  renderSettings, renderOnboarding, renderLogin
 } = AS
 
 const state = {
   lang: localStorage.getItem('as_lang') || null,
   name: localStorage.getItem('as_name') || '',
+  user: JSON.parse(localStorage.getItem('as_user') || 'null'),
   route: { name: 'home' },
   history: JSON.parse(localStorage.getItem('as_history') || '[]'),
   deferredInstall: null
@@ -34,6 +35,7 @@ const app = {
   t,
   get lang() { return state.lang },
   get name() { return state.name },
+  get user() { return state.user },
   get route() { return state.route },
   get history() { return state.history },
   go(name, params = {}) {
@@ -51,6 +53,16 @@ const app = {
     state.name = name
     if (name) localStorage.setItem('as_name', name)
     else localStorage.removeItem('as_name')
+    render()
+  },
+  login(id, phone) {
+    state.user = { id, phone, at: Date.now() }
+    localStorage.setItem('as_user', JSON.stringify(state.user))
+    render()
+  },
+  logout() {
+    state.user = null
+    localStorage.removeItem('as_user')
     render()
   },
   addHistory(entry) {
@@ -97,7 +109,7 @@ function shell() {
   header.innerHTML = `
     <div class="row">
       <div>
-        <h1>🌿 ${tr('appName')}</h1>
+        <h1><img class="h-ico" src="img/leaf.png" alt=""> ${tr('appName')}</h1>
         <div class="sub">${tr('tagline')}</div>
       </div>
       <button class="lang-chip" id="langToggle">${state.lang === 'rw' ? 'EN' : 'RW'}</button>
@@ -119,16 +131,16 @@ function shell() {
   const nav = document.createElement('nav')
   nav.className = 'bottom-nav'
   const items = [
-    { key: 'home', icon: '🏠', label: tr('nav_home') },
-    { key: 'learn', icon: '📖', label: tr('nav_learn') },
-    { key: 'scan', icon: '📷', label: tr('nav_scan') },
-    { key: 'library', icon: '🦠', label: tr('nav_library') },
-    { key: 'more', icon: '⚙️', label: tr('nav_more') }
+    { key: 'home', icon: 'img/home.png', label: tr('nav_home') },
+    { key: 'learn', icon: 'img/book.png', label: tr('nav_learn') },
+    { key: 'scan', icon: 'img/camera.png', label: tr('nav_scan') },
+    { key: 'library', icon: 'img/leaf.png', label: tr('nav_library') },
+    { key: 'more', icon: 'img/settings.png', label: tr('nav_more') }
   ]
   items.forEach(it => {
     const b = document.createElement('button')
     b.className = 'nav-item' + (currentScreen === it.key ? ' active' : '') + (it.key === 'scan' ? ' scan-btn' : '')
-    b.innerHTML = `<span class="icon">${it.icon}</span><span>${it.label}</span>`
+    b.innerHTML = `<span class="icon"><img src="${it.icon}" alt=""></span><span>${it.label}</span>`
     b.onclick = () => app.go(it.key === 'more' ? 'settings' : it.key)
     nav.appendChild(b)
   })
@@ -136,6 +148,15 @@ function shell() {
 }
 
 function render() {
+  if (!state.user) {
+    const el = document.getElementById('app')
+    el.innerHTML = ''
+    const main = document.createElement('main')
+    main.className = 'screen'
+    el.appendChild(main)
+    renderLogin(main, app)
+    return
+  }
   if (!state.lang) {
     const el = document.getElementById('app')
     el.innerHTML = ''

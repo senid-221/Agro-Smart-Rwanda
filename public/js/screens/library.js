@@ -21,7 +21,7 @@ AS.renderLibrary = function (container, app) {
   const mkChip = (id, label) => {
     const c = document.createElement('button')
     c.className = 'chip' + (filter === id ? ' active' : '')
-    c.textContent = label
+    c.innerHTML = label
     c.onclick = () => { filter = id; renderChips(); renderList() }
     return c
   }
@@ -31,7 +31,7 @@ AS.renderLibrary = function (container, app) {
     chips.appendChild(mkChip('all', tr('library_all')))
     Object.entries(CROPS).forEach(([id, c]) => {
       if (DISEASES.some(d => d.crop === id)) {
-        chips.appendChild(mkChip(id, `${c.emoji} ${c[lang]}`))
+        chips.appendChild(mkChip(id, `<img class="chip-ico" src="${c.img}" alt=""> ${c[lang]}`))
       }
     })
   }
@@ -52,7 +52,7 @@ AS.renderLibrary = function (container, app) {
       const row = document.createElement('button')
       row.className = 'list-row'
       row.innerHTML = `
-        <span class="emoji">${CROPS[d.crop].emoji}</span>
+        <img class="thumb" src="${CROPS[d.crop].img}" alt="">
         <span class="body">
           <span class="name">${d.name[lang]}</span>
           <span class="meta">${CROPS[d.crop][lang]} · <span class="badge sev-${d.severity}">${tr('sev_' + d.severity)}</span></span>
@@ -83,7 +83,7 @@ AS.renderDiseaseDetail = function (container, app, id) {
 
   container.insertAdjacentHTML('beforeend', `
     <div class="detail-hero">
-      <span class="emoji">${crop.emoji}</span>
+      <span class="emoji"><img class="hero-crop" src="${crop.img}" alt=""></span>
       <h2>${d.name[lang]}</h2>
       <div class="sci">${d.sci}</div>
       <div style="margin-top:8px"><span class="badge sev-${d.severity}">${tr('sev_' + d.severity)}</span>

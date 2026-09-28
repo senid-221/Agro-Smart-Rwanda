@@ -37,7 +37,7 @@ AS.renderHome = function (container, app) {
 
   container.innerHTML = `
     <button class="scan-hero" id="scanHero">
-      <span class="emoji">📷</span>
+      <img class="hero-ico" src="img/camera.png" alt="">
       <span>
         <span class="title">${tr('home_scan_title')}</span>
         <span class="desc">${tr('home_scan_desc')}</span>
@@ -47,22 +47,22 @@ AS.renderHome = function (container, app) {
     <div class="section-title">${greeting} 👋</div>
     <div class="grid-2">
       <button class="feature-card" data-go="learn">
-        <span class="emoji">📖</span>
+        <img class="fico" src="img/book.png" alt="">
         <span class="label">${tr('home_feature_learn')}</span>
         <span class="desc">${tr('home_feature_learn_d')}</span>
       </button>
       <button class="feature-card" data-go="crops">
-        <span class="emoji">🌽</span>
+        <img class="fico round" src="img/crops/maize.png" alt="">
         <span class="label">${tr('home_feature_crops')}</span>
         <span class="desc">${tr('home_feature_crops_d')}</span>
       </button>
       <button class="feature-card" data-go="fertilizer">
-        <span class="emoji">🧪</span>
+        <img class="fico" src="img/chemistry.png" alt="">
         <span class="label">${tr('home_feature_fert')}</span>
         <span class="desc">${tr('home_feature_fert_d')}</span>
       </button>
       <button class="feature-card" data-go="library">
-        <span class="emoji">🦠</span>
+        <img class="fico" src="img/leaf.png" alt="">
         <span class="label">${tr('home_feature_diseases')}</span>
         <span class="desc">${tr('home_feature_diseases_d')}</span>
       </button>
@@ -89,7 +89,7 @@ AS.renderHome = function (container, app) {
       const date = new Date(item.at).toLocaleDateString(lang === 'rw' ? 'rw-RW' : 'en-GB', { day: 'numeric', month: 'short' })
       if (d) {
         row.innerHTML = `
-          <span class="emoji">${CROPS[d.crop].emoji}</span>
+          <img class="thumb" src="${CROPS[d.crop].img}" alt="">
           <span class="body">
             <span class="name">${d.name[lang]}</span>
             <span class="meta">${item.confidence}% · ${date}</span>
