@@ -1,7 +1,26 @@
 // AgroSmart Rwanda — AI instructions & responder.
-// AS.AI_POLICY is the instruction set: WHAT the assistant may answer, WHICH
-// source it answers from, HOW the reply is built and WHEN it must refuse.
-// AS.aiReply() applies the policy against the offline knowledge bases.
+// AS.FARMER_RULES / AS.AI_POLICY are the instruction set: WHAT the assistant
+// may answer, WHICH source it answers from, HOW the reply is built and WHEN
+// it must refuse or escalate to a qualified agronomist.
+// AS.aiReply() applies the rules against the offline knowledge bases.
+AS.FARMER_RULES = [
+  { en: 'Act like a real, experienced agronomist helping the farmer.', rw: 'Itware nk\'umuhinza w\'umwuga (agronome) ufasha umuhinzi.' },
+  { en: 'Ask about the crop, symptoms, location, crop age and farming conditions before diagnosing.', rw: 'Banza ubaze igihingwa, ibimenyetso, aho umurima uri, imyaka y\'igihingwa n\'imiterere y\'ubuhinzi mbere yo gupima.' },
+  { en: 'If possible, ask the farmer to upload a clear photo of the affected plant.', rw: 'Nibishoboka, sabwa umuhinzi gufata ifoto isobanutse y\'ikimera cyafashwe.' },
+  { en: 'Identify the most likely disease, pest, nutrient deficiency or environmental problem.', rw: 'Menya indwara, ikimonyo, ibura ry\'ibigunga cyangwa ikibazo cy\'ibidukikije bishoboka cyane.' },
+  { en: 'Never guess when evidence is insufficient; clearly say when you are uncertain.', rw: 'Ntukeke ibimenyetso nidahagije; vuga ukuri iyo utabi neza.' },
+  { en: 'Explain the problem in simple language the farmer can understand.', rw: 'Sobanura ikibazo mu mvugo yoroshye umuhinzi yumva.' },
+  { en: 'Give practical steps for treatment and prevention.', rw: 'Tanga intambwe zifatika zo kuvura no kwirinda.' },
+  { en: 'Recommend agricultural products only when appropriate for the identified problem.', rw: 'Tanga ibicuruzwa by\'ubuhinzi gusa iyo bikwiye ikibazo cyamenyekanye.' },
+  { en: 'Never invent pesticide names, dosages or treatment instructions.', rw: 'Ntihimba amazina y\'imiti, ingano cyangwa amabwiriza yo kuvura.' },
+  { en: 'Always include chemical-safety precautions when recommending agricultural chemicals.', rw: 'Hora utanga amabwiriza y\'umutekano wo gukoresha imiti y\'ubuhinzi.' },
+  { en: 'Consider Rwanda\'s crops, climate, soil and local farming conditions.', rw: 'Tekereza ku bihingwa, ikirere, ubutaka n\'imiterere y\'ubuhinzi by\'u Rwanda.' },
+  { en: 'Respond in the farmer\'s language, especially clear Kinyarwanda when they use Kinyarwanda.', rw: 'Subiza mu rurimi rw\'umuhinzi, cyane cyane Ikinyarwanda gisobanutse iye ryanditse.' },
+  { en: 'Keep answers short, practical and focused on the farmer\'s problem.', rw: 'Subiza ngufi, bifatika, byibanda ku kibazo cy\'umuhinzi.' },
+  { en: 'If the problem is serious or uncertain, recommend contacting a qualified agronomist.', rw: 'Ikibazo nikiba gikomeye cyangwa kitazwi, sabwa kugana agronome ubifitiye ubumenyi.' },
+  { en: 'Never pretend to be certain when a professional field inspection is needed.', rw: 'Ntiryandahire ko uzi ukuri hagikenewe isuzuma ry\'umwuga mu murima.' }
+]
+
 AS.AI_POLICY = {
   role: {
     en: 'AgroSmart AI Assistant — farming helper for Rwandan farmers',
@@ -21,13 +40,13 @@ AS.AI_POLICY = {
     {
       id: 'disease',
       when: { en: 'Question about symptoms, spots, yellowing, wilting, rot or a disease name', rw: 'Ikibazo ku bimenyetso, ibara, umuhondo, kwuma, kubora cyangwa izina ry\'indwara' },
-      how: { en: 'Match the disease library, then give cause + first treatment step + first prevention step', rw: 'Shakisha mu rutonde rw\'indwara, utange impamvu + intambwe ya mbere y\'imiti + iy\'irinda' },
+      how: { en: 'First collect crop + symptoms (and suggest a photo); then give most-likely cause, one treatment step, one prevention step, safety notes and agronomist escalation when serious or uncertain', rw: 'Banza ukusanye igihingwa + ibimenyetso (usabe n\'ifoto); hanyuma utange impamvu ishoboka, intambwe imwe y\'imiti, iy\'kwirinda, umutekano w\'imiti no kwohereza kuri agronome niba bikomeye' },
       source: 'AS.DISEASES (library)'
     },
     {
       id: 'product',
       when: { en: 'Question about price, buying, stock, or a product name (seeds, tools, sprayers...)', rw: 'Ikibazo ku giciro, kugura, cyangwa izina ry\'igicuruzwa (imbuto, ibikoresho...)' },
-      how: { en: 'Look the item up in the store catalog and quote the exact RWF price and unit; never invent prices', rw: 'Shakisha mu Iduka utange igiciro nyacyo mu RWF n\'ipimo; ntihimbe igiciro' },
+      how: { en: 'Look the item up in the store catalog and quote the exact RWF price and unit; never invent prices; add safety notes for chemicals', rw: 'Shakisha mu Iduka utange igiciro nyacyo mu RWF n\'ipimo; ntihimba igiciro; ongeraho umutekano ku miti' },
       source: 'AS.PRODUCTS (store)'
     },
     {
@@ -61,15 +80,11 @@ AS.AI_POLICY = {
       source: 'none'
     }
   ],
-  rules: [
-    { en: 'Never invent prices or medicines — only catalog and library content', rw: 'Ntihimba ibiciro cyangwa imiti — koresha Iduka n\'urutonde rw\'indwara gusa' },
-    { en: 'Keep answers short: at most 4 lines', rw: 'Subiza ngufi: imirongo itarenze 4' },
-    { en: 'For diseases always pair treatment with prevention', rw: 'Ku ndwara, huza imiti n\'uburyo bwo kuyirinda' },
-    { en: 'When unsure, ask the farmer to scan a leaf or consult an agronomist', rw: 'Iyo utabi neza, sabwe gufata ifoto y\'ibabi cyangwa kugana agronome' }
-  ]
+  rules: AS.FARMER_RULES
 }
 
-AS.aiReply = function (text, lang) {
+AS.aiReply = function (text, lang, ctx) {
+  ctx = ctx && typeof ctx === 'object' ? ctx : {}
   const low = String(text).toLowerCase()
   const has = (...ws) => ws.some(w => low.includes(w))
   const s = ' ' + low + ' '
@@ -84,6 +99,13 @@ AS.aiReply = function (text, lang) {
   const crops = AS.CROPS
   const guides = AS.CROP_GUIDES || []
 
+  const SAFETY = L === 'rw'
+    ? 'Umutekano w\'imiti: kwambara gants n\'udupfukamunwa, ntuvange imiti, karaba nyuma yo gukoresha, bika kure y\'abana n\'amatungo.'
+    : 'Chemical safety: wear gloves and a mask, never mix chemicals, wash after handling, store away from children and animals.'
+  const AGRONOMIST = L === 'rw'
+    ? 'Niba bikomeje cyangwa utabi neza, gana agronome wa RAB ukwegereye kugira ngo asuzume umurima.'
+    : 'If it persists or you are unsure, contact a qualified agronomist (RAB office) for a field inspection.'
+
   const mentionCrop = () => {
     for (const [id, c] of Object.entries(crops)) {
       if (has(c.en.toLowerCase(), c.rw.toLowerCase())) return guides.find(g => g.id === id) || { id, name: c }
@@ -92,19 +114,19 @@ AS.aiReply = function (text, lang) {
   }
 
   // 1 — greeting
-  if (/^(hi|hello|hey|muraho|mwaramutse|mwiriwe|niteho)\b/.test(low.trim())) {
+  if (/^(hi|hello|hey|muraho|mwaramutse|mwiriwe|niteho)\b/.test(low.trim()) && low.length < 40) {
     return {
-      intent: 'greeting',
+      intent: 'greeting', ctx,
       text: L === 'rw'
-        ? 'Muraho! Ndi Umufasha AI wa AgroSmart. Mbaze ku ndwara z\'ibihingwa, ibiciro by\'ibicuruzwa, ifumbire cyangwa uburyo bwo guhinga.'
-        : 'Hello! I am the AgroSmart AI Assistant. Ask me about crop diseases, product prices, fertilizers or how to plant.'
+        ? 'Muraho! Ndi Umufasha AI wa AgroSmart, nkora nk\'agronome. Mbwira ikibazo cy\'igihingwa cyawe (ibimenyetso, aho uri, imyaka y\'igihingwa) cyangwa umbaze ibiciro n\'ifumbire.'
+        : 'Hello! I am the AgroSmart AI Assistant, working like an agronomist. Tell me your crop problem (symptoms, location, crop age) or ask about prices and fertilizers.'
     }
   }
 
   // 2 — out of scope
   if (has('politic', 'politiki', 'football', 'umupira w', 'betting', 'casino', 'amahirwe', 'headache', 'umutwe ubabaza', 'urukundo', 'love ')) {
     return {
-      intent: 'out_of_scope',
+      intent: 'out_of_scope', ctx,
       text: L === 'rw'
         ? 'Mbabarira — nsubiza ibibazo by\'ubuhinzi gusa. Gerageza umbaze ku bihingwa, indwara, ifumbire cyangwa ibiciro by\'ibicuruzwa.'
         : 'Sorry — I only answer farming questions. Try asking about crops, diseases, fertilizers or product prices.'
@@ -112,6 +134,15 @@ AS.aiReply = function (text, lang) {
   }
 
   // 3 — product / price
+  // Compute the disease / fertilizer signals first so a diagnosis in progress
+  // (ctx.awaiting) or a crop+symptom / fertilizer question is never hijacked by
+  // a bare product-name match (rules 2,4,5,7).
+  const SYMPTOMS = ['indwara', 'disease', 'symptom', 'ikimenyetso', 'yellow', 'umuhondo', 'spot', 'ibara',
+    'wilt', 'kwuma', 'rot', 'kubora', 'blight', 'necrosis', 'hole', 'umwobo', 'udusimba', 'ibyonnyi', 'pest',
+    'ibimonyo', 'deficien', 'ibura']
+  const diseaseAsk = has(...SYMPTOMS) || ctx.awaiting === true
+  const FERT_WORDS = ['ifumbire', 'fumbire', 'fertiliz', 'npk', 'urea', 'dap', 'mborera', 'compost', 'lime', 'manure']
+  const fertAsk = has(...FERT_WORDS)
   const priceAsk = has('price', 'igiciro', 'igura', 'gura', 'buy', 'shop', 'store', 'iduka', 'amafaranga', 'cost', 'frw', 'rfw')
   const findProduct = () => {
     const STOP = ['price', 'cost', 'buy', 'gura', 'igura', 'giciro', 'igiciro', 'store', 'shop', 'iduka',
@@ -132,7 +163,7 @@ AS.aiReply = function (text, lang) {
     ['wheelbarrow', 'tool-wheel'], ['incubator', 'live-incub'], ['silo', 'post-silo']
   ].find(([k]) => has(k))
   const plantingStrong = has('ryari', 'when', 'season', 'igihembwe', 'sowing', 'how to plant', 'tera', 'plant', 'guhinga')
-  if (priceAsk || catKeyword || (!plantingStrong && findProduct())) {
+  if (priceAsk || catKeyword || (!plantingStrong && !diseaseAsk && !fertAsk && findProduct())) {
     let p = findProduct()
     if (!p && catKeyword) p = AS.PRODUCTS.find(x => x.id === catKeyword[1])
     if (!p && priceAsk) {
@@ -141,55 +172,88 @@ AS.aiReply = function (text, lang) {
     }
     if (p) {
       return {
-        intent: 'product',
-        text: `${p.emoji ? p.emoji + ' ' : ''}${p[L]} — ${AS.fmtRWF(p.price)} / ${p.unit[L]}. ` + (L === 'rw'
-          ? 'Biboneka mu Iduka: shyira mu gatebo utumize.'
-          : 'Available in the Store: add to cart to order.')
+        intent: 'product', ctx,
+        text: `${p.emoji ? p.emoji + ' ' : ''}${p[L]} — ${AS.fmtRWF(p.price)} / ${p.unit[L]}. ` +
+          (L === 'rw' ? 'Biboneka mu Iduka: shyira mu gatebo utumize.' : 'Available in the Store: add to cart to order.') +
+          (p.cat === 'protect' ? '\n' + SAFETY : '')
       }
     }
     return {
-      intent: 'product',
+      intent: 'product', ctx,
       text: L === 'rw'
         ? 'Ntabwo nzi icyo gicuruzwa. Reba mu Iduka (imbuto, ifumbire, imiti, ibikoresho, ivomerera...) cyangwa umbaze igiciro cy\'ikizwi nka NPK, isuka, imbuto z\'ibigori.'
         : 'I don\'t stock that name. Browse the Store (seeds, fertilizers, crop protection, tools, irrigation...) or ask a known price like NPK, hoes, maize seeds.'
     }
   }
 
-  // 4 — disease
-  if (has('indwara', 'disease', 'symptom', 'ikimenyetso', 'yellow', 'umuhondo', 'spot', 'ibara', 'wilt', 'kwuma', 'rot', 'kubora', 'blight', 'necrosis', 'hole', 'umwobo', 'udusimba', 'ibyonnyi', 'pest')) {
+  // 4 — disease / diagnosis (rules 2,3,4,5,6,7,8,9,10,14,15)
+  if (diseaseAsk) {
+    const g = mentionCrop()
+    if (g) ctx.crop = ctx.crop || g.id
+    if (has(...SYMPTOMS)) ctx.symptoms = true
+    if (!ctx.crop || !ctx.symptoms) {
+      ctx.awaiting = true
+      return {
+        intent: 'disease', ctx,
+        text: L === 'rw'
+          ? 'Ngira ngo ngufashe nk\'agronome, mbanza nkumenya neza ikibazo. Mbwira: (1) igihingwa cyafashwe, (2) ibimenyetso ubona (amababi, amabara, kwuma, imyobo), (3) akarere umurima urimo n\'imyaka/ibyumweru by\'igihingwa, (4) uko muvomerera cyangwa imvura. Nibishoboka, fata ifoto isobanutse y\'igice cyafashwe muri "Gusuzuma".'
+          : 'To help you like an agronomist, I first need the full picture. Tell me: (1) which crop is affected, (2) the symptoms you see (leaves, colours, wilting, holes), (3) your district and the crop\'s age, (4) irrigation or rain conditions. If possible, upload a clear photo of the affected part using "Scan".'
+      }
+    }
+    ctx.awaiting = false
     const tokens = low.split(/[^a-z']/i).filter(w => w.length >= 5)
     let best = null, bestScore = 0
     for (const d of AS.DISEASES) {
-      const hay = (d.name.en + ' ' + d.name.rw + ' ' + d.symptoms.en[0] + ' ' + d.symptoms.rw[0]).toLowerCase()
+      if (ctx.crop && d.crop !== ctx.crop) continue
+      const hay = (d.name.en + ' ' + d.name.rw + ' ' + d.symptoms.en.join(' ') + ' ' + d.symptoms.rw.join(' ')).toLowerCase()
       let score = 0
       for (const w of tokens) if (hay.includes(w)) score++
       if (score > bestScore) { bestScore = score; best = d }
     }
-    const g = mentionCrop()
-    if (!best && g) best = AS.DISEASES.find(d => d.crop === g.id)
-    if (best) {
+    if (!best) best = AS.DISEASES.find(d => d.crop === ctx.crop) || null
+    const cropName = ctx.crop ? crops[ctx.crop][L] : ''
+    if (!best || bestScore === 0) {
+      ctx.awaiting = true
       return {
-        intent: 'disease',
-        text: `${best.name[L]} (${crops[best.crop][L]}).\n` +
-          (L === 'rw' ? 'Impamvu: ' : 'Cause: ') + best.cause[L] + '\n' +
-          (L === 'rw' ? 'Imiti: ' : 'Treatment: ') + best.treatment[L][0] + '\n' +
-          (L === 'rw' ? 'Irinde: ' : 'Prevention: ') + best.prevention[L][0]
+        intent: 'disease', ctx,
+        text: (L === 'rw'
+          ? `Ibimenyetso ntibihagije kugira ngo nvuge indwara nyayo kuri ${cropName}. Ntikeka: fata ifoto isobanutse y\'ibabi cyangwa igice cyafashwe muri "Gusuzuma", cyangwa gana agronome usuzume umurima.`
+          : `The evidence is not enough to name a definite problem on ${cropName}. I will not guess: take a clear photo of the affected leaf or part using "Scan", or have an agronomist inspect the field.`) +
+          '\n' + AGRONOMIST
       }
     }
+    const sure = bestScore >= 2
+    const treatAll = best.treatment[L].join(' ').toLowerCase()
+    const chem = /insecticide/.test(treatAll) ? 'prot-insect'
+      : /fungicide/.test(treatAll) ? 'prot-fung'
+      : /herbicide/.test(treatAll) ? 'prot-herb' : null
+    const prod = chem ? AS.PRODUCTS.find(p => p.id === chem) : null
+    const firstSentence = t => { const m = t.match(/^[^.!?]+[.!?]?/); return m ? m[0] : t }
+    let out = `${best.name[L]} (${cropName}) — ` +
+      (L === 'rw' ? (sure ? 'ni yo bishoboka cyane.' : 'ishobora kuba ari yo, ariko ntabwo neza neza.') : (sure ? 'this is the most likely cause.' : 'this could be the cause, but I am not certain.')) +
+      '\n' + (L === 'rw' ? 'Ikibazo: ' : 'Problem: ') + firstSentence(best.cause[L]) +
+      '\n' + (L === 'rw' ? 'Ibyo wakora: ' : 'Do this: ') + best.treatment[L][0] +
+      (prod ? ` ${L === 'rw' ? 'Igicuruzwa gikwiye mu Iduka:' : 'Suitable product in the Store:'} ${prod[L]} (${AS.fmtRWF(prod.price)}/${prod.unit[L]}).` : '') +
+      '\n' + (L === 'rw' ? 'Kwirinda: ' : 'Prevention: ') + best.prevention[L][0]
+    if (prod) out += '\n' + SAFETY
+    if (best.severity === 'high' || !sure) out += '\n' + AGRONOMIST
+    ctx.symptoms = false
+    ctx.awaiting = false
+    return { intent: 'disease', ctx, text: out }
   }
 
   // 5 — fertilizer
-  if (has('ifumbire', 'fertiliz', 'npk', 'urea', 'dap', 'mborera', 'compost', 'lime', 'manure')) {
+  if (fertAsk) {
     const g = mentionCrop()
     if (g && g.fertilizing) {
       return {
-        intent: 'fertilizer',
+        intent: 'fertilizer', ctx,
         text: `${g.name[L]}: ${g.fertilizing[L][0]} ${g.fertilizing[L][1] || ''} ` +
           (L === 'rw' ? 'Reba "Ifumbire" muri app ku bindi bisobanuro.' : 'See "Fertilizers" in the app for details.')
       }
     }
     return {
-      intent: 'fertilizer',
+      intent: 'fertilizer', ctx,
       text: L === 'rw'
         ? 'Muri rusange: NPK 17-17-17 mu gutera (ifumbire y\'ibanze), hanyuma urea yo kongera igihe ibimera bikura. Reba igice cya "Ifumbire" ku ngano za buri gihingwa.'
         : 'General rule: NPK 17-17-17 as basal at planting, then urea top-dress while plants are growing. See the "Fertilizers" section for per-crop rates.'
@@ -197,16 +261,16 @@ AS.aiReply = function (text, lang) {
   }
 
   // 6 — planting
-  if (has('guhinga', 'plant', 'tera', 'sowing', 'mbuto', 'seed', 'season', 'igihembwe', 'ryari', 'when', 'spacing', 'intera')) {
+  if (plantingStrong || has('mbuto', 'seed', 'spacing', 'intera')) {
     const g = mentionCrop()
     if (g && g.season) {
       return {
-        intent: 'planting',
+        intent: 'planting', ctx,
         text: `${g.name[L]}: ${g.season[L]} ${g.planting ? g.planting[L][0] : ''}`
       }
     }
     return {
-      intent: 'planting',
+      intent: 'planting', ctx,
       text: L === 'rw'
         ? 'Mbwire igihingwa (ibigori, ibishyimbo, ibirayi, umuceri...) kugira ngo nguhe igihembwe n\'uburyo bwo gutera.'
         : 'Tell me the crop (maize, beans, potato, rice...) and I will give you the season and planting steps.'
@@ -216,7 +280,7 @@ AS.aiReply = function (text, lang) {
   // 7 — scan
   if (has('ifoto', 'photo', 'picture', 'scan', 'video', 'camera', 'gusuzuma')) {
     return {
-      intent: 'scan',
+      intent: 'scan', ctx,
       text: L === 'rw'
         ? 'Koresha "Gusuzuma" ufate ifoto y\'ibabi — AI izakubwira indwara n\'umuti ako kanya.'
         : 'Use "Scan" and take a leaf photo — the AI will identify the disease and treatment instantly.'
@@ -225,7 +289,7 @@ AS.aiReply = function (text, lang) {
 
   // 8 — fallback
   return {
-    intent: 'fallback',
+    intent: 'fallback', ctx,
     text: L === 'rw'
       ? 'Simbi neza igisubizo cy\'icyo kibazo. Gerageza: gufata ifoto (Gusuzuma), kureba "Indwara", cyangwa umbaze ibiciro n\'ifumbire.'
       : 'I am not sure about that one. Try: take a photo (Scan), browse "Diseases", or ask me about prices and fertilizers.'

@@ -1,8 +1,14 @@
 (function () {
 let chatLog = []
+let chatCtx = {}
 
 AS.renderAssistant = function (container, app) {
   const tr = app.t()
+  const lang = app.lang === 'en' ? 'en' : 'rw'
+
+  const rulesHtml = (AS.FARMER_RULES || [])
+    .map((r, i) => `<li>${i + 1}. ${r[lang]}</li>`)
+    .join('')
 
   container.innerHTML = `
     <div class="store-head">
@@ -12,13 +18,7 @@ AS.renderAssistant = function (container, app) {
     <p class="progress-note" style="margin:2px 0 10px">${tr('assistant_sub')}</p>
     <div class="card policy-card" id="howCard" hidden>
       <div class="label" style="font-weight:700;margin-bottom:6px">${tr('assistant_how')}</div>
-      <ul class="policy-list">
-        <li>${tr('ai_how_1')}</li>
-        <li>${tr('ai_how_2')}</li>
-        <li>${tr('ai_how_3')}</li>
-        <li>${tr('ai_how_4')}</li>
-        <li>${tr('ai_how_5')}</li>
-      </ul>
+      <ul class="policy-list">${rulesHtml}</ul>
     </div>
     <div class="chat-log" id="chatLog"></div>
     <div class="chip-row" id="suggChips"></div>
@@ -67,8 +67,9 @@ AS.renderAssistant = function (container, app) {
     typing.textContent = '…'
     log.appendChild(typing)
     log.scrollTop = log.scrollHeight
-    const res = await AS.api.post('/ai/chat', { message: text, lang: app.lang })
+    const res = await AS.api.post('/ai/chat', { message: text, lang: app.lang, ctx: chatCtx })
     typing.remove()
+    chatCtx = res.ctx || chatCtx
     chatLog.push({ who: 'ai', text: res.text })
     drawLog()
   }

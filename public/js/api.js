@@ -35,7 +35,7 @@ AS.api = (function () {
       return order
     },
     'GET /orders': () => AS.db.all('orders'),
-    'POST /ai/chat': (q, body) => AS.aiReply(body.message || '', body.lang || 'rw')
+    'POST /ai/chat': (q, body) => AS.aiReply(body.message || '', body.lang || 'rw', body.ctx || {})
   }
 
   async function call(method, path, body) {
