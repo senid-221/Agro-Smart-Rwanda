@@ -135,7 +135,7 @@ AS.T = {
   auth_tab_signup: { en: 'Sign up', rw: 'Kwiyandikisha' },
   auth_signup_sub: { en: 'Create your farmer account with ID and mobile number', rw: 'Fungura konti yawe y\'umuhinzi ukoresheje ID na telefoni' },
   auth_signup_btn: { en: 'Create account', rw: 'Fungura konti' },
-  auth_hint_login: { en: 'New here? Switch to Sign up above.', rw: 'Urashya hano? Hindukira kuri Kwiyandikisha hejuru.' },
+  auth_hint_login: { en: 'New here? Sign up to create your account.', rw: 'Uri mushya hano? Iyandikishe' },
   auth_hint_signup: { en: 'Already registered? Switch to Log in above.', rw: 'Wariyandikishije? Hindukira kuri Kwinjira hejuru.' },
   auth_err_notfound: { en: 'Account not found. Check your details or sign up.', rw: 'Konti ntabwo ibonetse. Reba amakuru cyangwa wiyandikishe.' },
   auth_err_exists: { en: 'This ID is already registered. Use Log in.', rw: 'Iyi ID yamaze kwiyandikisha. Koresha Kwinjira.' },
