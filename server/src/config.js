@@ -32,7 +32,20 @@ module.exports = {
   openai: {
     key: process.env.OPENAI_API_KEY || '',
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    // Vision-capable model for Crop Doctor photo analysis. Defaults to the chat
+    // model; set explicitly (e.g. gpt-4o) if the chat model cannot see images.
+    visionModel: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
     baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+  },
+  // Web research for the Crop Doctor. Grounded RAB/offline KB is always primary;
+  // a live search provider is used only when its key is configured. Tavily is the
+  // default adapter (single JSON POST). Leave the key empty to run KB-only.
+  research: {
+    provider: process.env.RESEARCH_PROVIDER || 'tavily',
+    apiKey: process.env.TAVILY_API_KEY || '',
+    baseUrl: process.env.TAVILY_BASE_URL || 'https://api.tavily.com',
+    maxResults: parseInt(process.env.RESEARCH_MAX_RESULTS || '5', 10),
+    get enabled() { return !!this.apiKey }
   },
   // Password-reset OTP policy. Codes are generated server-side and shown in the app.
   reset: {

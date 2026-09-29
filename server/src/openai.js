@@ -21,6 +21,10 @@ const AGRONOMIST_RULES = [
   'Anchor advice in Rwanda: its two seasons (A: Sep-Jan, B: Feb-Jun), highland vs lowland climate, districts, RAB-recommended varieties and Made-in-Rwanda soil-test fertilizer blends.',
   'Escalate responsibly. For notifiable or high-severity problems (e.g. Maize Lethal Necrosis, banana Xanthomonas wilt/Kirabiranya, cassava brown streak) or when a definitive field diagnosis is needed, advise reporting to and consulting RAB (toll-free 4675, +250 788 385 312, info@rab.gov.rw) or the nearest sector agronomist.',
   'Use the conversation history: remember the crop, plot and details the farmer already gave and do not re-ask them. Build on prior turns rather than restarting.',
+  'Present a differential diagnosis, not a single guess: the most likely cause plus 1-2 realistic alternatives, each with the symptoms that support it, the symptoms that do NOT match, and what evidence would confirm it. Use "consistent with" language, never false certainty.',
+  'When this is a follow-up on an existing Crop Health Case, compare the new report with the previous symptoms and diagnosis and state clearly whether the crop is improving, stable, worsening, showing new symptoms, or the treatment failed. If treatment failed, reassess the diagnosis and check application timing/dose/coverage and resistance — do NOT simply recommend more or stronger chemicals.',
+  'Only recommend a specific crop-protection product by name when it appears in the VERIFIED CROP-PROTECTION PRODUCTS block or the STORE CATALOG. Quote its active ingredient, dose, PHI/REI exactly as listed. If no verified product fits, describe the class of treatment and tell the farmer to confirm the exact registered product and dose with the local agro-dealer or RAB.',
+  'Cite your evidence. When you use the GROUNDED RESEARCH or LIVE WEB RESEARCH block, reference the source (RAB, or the [n] citation) so the farmer knows the advice is grounded, and never claim research was done when it was not.',
   'Reply in the farmer\'s language — clear, simple Kinyarwanda when they write Kinyarwanda, English when they write English. Use local crop/disease names the farmer knows.',
   'Keep it practical and scannable: short diagnosis, numbered action steps, then safety and follow-up. Avoid jargon, hedging filler and long preamble.',
   'Stay strictly on farming. If asked about politics, sport, betting, human medicine or anything unrelated, politely decline and redirect to crops, diseases, fertilizers, spraying or product prices.',
@@ -54,19 +58,80 @@ function catalogText(catalog) {
     }).join('\n')
 }
 
+// Verified crop-protection products (ai_products). Only rows an admin seeded from
+// real labels/RAB registration appear here; the model must not invent any.
+function cropProductsText(products, lang) {
+  return (products || []).map(p => {
+    const name = (lang === 'en' ? (p.name_en || p.name) : (p.name || p.name_en)) || ''
+    const bits = [`${name}${p.active_ingredient ? ' (active: ' + p.active_ingredient + ')' : ''}`]
+    if (p.type) bits.push('type: ' + p.type)
+    if (p.target_crop) bits.push('crop: ' + p.target_crop)
+    if (p.target_problem) bits.push('for: ' + p.target_problem)
+    if (p.dose) bits.push('dose: ' + p.dose)
+    if (p.application) bits.push('apply: ' + p.application)
+    if (p.phi) bits.push('PHI: ' + p.phi)
+    if (p.rei) bits.push('REI: ' + p.rei)
+    if (p.resistance_group) bits.push('FRAC/IRAC: ' + p.resistance_group)
+    if (p.registration) bits.push('registration: ' + p.registration)
+    return '- ' + bits.join(' | ')
+  }).join('\n')
+}
+
+// The farmer's active Crop Health Case + prior observations, so the Doctor
+// continues the case instead of restarting and can compare follow-ups.
+function caseText(c) {
+  if (!c) return ''
+  const f = []
+  if (c.crop) f.push('Crop: ' + c.crop + (c.variety ? ' (' + c.variety + ')' : ''))
+  if (c.district) f.push('Location: ' + [c.district, c.sector].filter(Boolean).join(', '))
+  if (c.planting_date) f.push('Planted: ' + c.planting_date)
+  if (c.growth_stage) f.push('Growth stage: ' + c.growth_stage)
+  if (c.farm_size) f.push('Farm size: ' + c.farm_size)
+  if (c.symptoms) f.push('Reported symptoms: ' + c.symptoms)
+  if (c.suspected) f.push('Working diagnosis: ' + c.suspected)
+  f.push('Status: ' + (c.status || 'open'))
+  return f.join('\n')
+}
+
+function followUpText(observations) {
+  return (observations || []).map(o => {
+    const when = o.created_at ? new Date(o.created_at).toISOString().slice(0, 10) : ''
+    const img = (o.images && o.images.length) ? ' [+photo]' : ''
+    return `- ${when} (${o.kind})${o.status_change ? ' [' + o.status_change + ']' : ''}${img}: ${o.note}`
+  }).join('\n')
+}
+
+function sourcesText(sources) {
+  return (sources || []).filter(s => s && (s.title || s.url))
+    .map((s, i) => `${i + 1}. ${s.title || s.url}${s.url ? ' — ' + s.url : ''}${s.label ? ' (' + s.label + ')' : ''}`)
+    .join('\n')
+}
+
 // Build the full system prompt. `research` is the grounded, message-specific
-// Rwanda evidence produced by knowledge.research(); `scan` (optional) is a prior
-// Crop Doctor scan result to give the model visual context.
-function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan } = {}) {
+// Rwanda evidence produced by research.research(); `scan` (optional) is the vision
+// analysis of the farmer's photo; `caseCtx`/`observations` carry the active Crop
+// Health Case; `cropProducts` are verified crop-protection products; `sources`
+// are the citations to show the farmer.
+function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan, caseCtx, observations, cropProducts, sources } = {}) {
   const gl = glossaryText(lang, glossary)
   const trained = qaText(lang, qa)
   const prices = catalogText(catalog)
+  const prods = cropProductsText(cropProducts, lang)
+  const cText = caseText(caseCtx)
+  const fuText = followUpText(observations)
+  const srcText = sourcesText(sources)
   const langName = lang === 'en' ? 'English' : 'clear, simple Kinyarwanda'
 
   const sections = [
     'ROLE\nYou are the AgroSmart Rwanda Crop AI Doctor — a senior agronomist, plant-pathologist and trusted advisor for Rwandan smallholder farmers.',
     `OUTPUT LANGUAGE\nReply in the farmer's language: ${langName}. Mirror the language they used in this conversation.`,
     'HOW TO WORK AS AN AGRONOMIST\n' + rulesText(),
+    cText
+      ? 'ACTIVE CROP HEALTH CASE (continue this case — do not restart or re-ask known facts)\n' + cText
+      : '',
+    fuText
+      ? 'CASE HISTORY / FOLLOW-UPS (compare the current report against these)\n' + fuText
+      : '',
     research
       ? 'GROUNDED RESEARCH (Rwanda-specific evidence — prefer this over generic knowledge; cite RAB where used)\n' + research
       : '',
@@ -75,8 +140,23 @@ function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan } = {})
       : '',
     gl ? 'GLOSSARY (use these clear terms)\n' + gl : '',
     trained ? 'ADMIN-TRAINED Q&A (prefer these answers when relevant)\n' + trained : '',
+    prods ? 'VERIFIED CROP-PROTECTION PRODUCTS (only these may be named with a dose/PHI; never invent others)\n' + prods : '',
     prices ? 'STORE CATALOG (quote these exact RWF prices; never invent prices)\n' + prices : '',
-    'ANSWER SHAPE\n1) Most likely diagnosis + confidence and key differentiators. 2) Numbered treatment steps (crop medicine with dose/timing/safety + cultural/organic + prevention). 3) When to escalate to RAB/agronomist. Keep it short and practical.'
+    srcText ? 'SOURCES (cite these to the farmer under Sources)\n' + srcText : '',
+    'RESPONSE STRUCTURE (use these short labelled sections in the farmer\'s language; skip any that do not apply, but always include Most Likely Cause, What To Do Now, Confidence and Sources when you have evidence)\n' +
+      'Crop — the affected crop.\n' +
+      'What I See — one or two lines summarising the reported symptoms (and photo findings if any).\n' +
+      'Most Likely Cause — the leading diagnosis, why it fits, and your confidence.\n' +
+      'Other Possibilities — 1-2 alternatives with what matches / does not match and how to confirm.\n' +
+      'What To Do Now — immediate practical steps.\n' +
+      'Treatment — crop medicine with active ingredient, dose, timing, repeat interval and PHI (only verified products) PLUS cultural/organic options; lead with IPM (prevention, sanitation, resistant varieties, rotation, spacing, irrigation/soil management, biological/physical control) and reserve chemicals for when justified.\n' +
+      'Safety — PPE, no mixing, keep away from children/livestock/water/bees, REI and PHI, proper storage/disposal whenever any agrochemical is mentioned.\n' +
+      'Prevention — how to stop it recurring.\n' +
+      'What To Watch — symptoms to monitor.\n' +
+      'Follow-Up — what to check and report back (e.g. re-check the affected plants after the label interval and tell me if symptoms are increasing, stable or improving), and what photo to send next.\n' +
+      'Confidence — High / Moderate / Low and why.\n' +
+      'Sources — the RAB / knowledge-base / [n] citations you relied on.\n' +
+      'Keep it short, warm and scannable. If critical facts are missing, ask 1-3 targeted questions instead of guessing. Escalate notifiable or severe problems (e.g. Maize Lethal Necrosis, banana Xanthomonas wilt/Kirabiranya, cassava brown streak, whole-field spread, treatment failure) to RAB (toll-free 4675, +250 788 385 312, info@rab.gov.rw) or the nearest sector agronomist.'
   ]
   return sections.filter(Boolean).join('\n\n')
 }

@@ -106,12 +106,88 @@ CREATE TABLE IF NOT EXISTS ai_messages (
   created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- A Crop Health Case: one crop problem a farmer is managing over time. Lets the
+-- Doctor continue an existing case, compare follow-ups and track outcomes.
+CREATE TABLE IF NOT EXISTS crop_cases (
+  id            SERIAL PRIMARY KEY,
+  user_id       INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  crop          VARCHAR(32)  NOT NULL DEFAULT '',
+  variety       VARCHAR(80)  NOT NULL DEFAULT '',
+  district      VARCHAR(60)  NOT NULL DEFAULT '',
+  sector        VARCHAR(60)  NOT NULL DEFAULT '',
+  planting_date VARCHAR(40)  NOT NULL DEFAULT '',
+  growth_stage  VARCHAR(40)  NOT NULL DEFAULT '',
+  farm_size     VARCHAR(40)  NOT NULL DEFAULT '',
+  symptoms      TEXT         NOT NULL DEFAULT '',
+  suspected     VARCHAR(160) NOT NULL DEFAULT '',
+  status        VARCHAR(16)  NOT NULL DEFAULT 'open'
+                CHECK (status IN ('open','monitoring','resolved','closed')),
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Link each conversation turn to the Crop Health Case it belongs to (nullable:
+-- general chat with no active case). Placed after crop_cases exists.
+ALTER TABLE ai_messages ADD COLUMN IF NOT EXISTS case_id INT REFERENCES crop_cases(id) ON DELETE SET NULL;
+
+-- Every report, photo finding, treatment, follow-up or outcome on a case.
+CREATE TABLE IF NOT EXISTS case_observations (
+  id            SERIAL PRIMARY KEY,
+  case_id       INT          NOT NULL REFERENCES crop_cases(id) ON DELETE CASCADE,
+  user_id       INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          VARCHAR(16)  NOT NULL DEFAULT 'report'
+                CHECK (kind IN ('report','followup','treatment','outcome','image')),
+  note          TEXT         NOT NULL DEFAULT '',
+  images        JSONB        NOT NULL DEFAULT '[]',
+  status_change VARCHAR(16)  NOT NULL DEFAULT '',
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Research provenance: what evidence backed a recommendation, and how reliable.
+CREATE TABLE IF NOT EXISTS research_records (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  case_id    INT          REFERENCES crop_cases(id) ON DELETE SET NULL,
+  query      TEXT         NOT NULL DEFAULT '',
+  crop       VARCHAR(32)  NOT NULL DEFAULT '',
+  findings   TEXT         NOT NULL DEFAULT '',
+  sources    JSONB        NOT NULL DEFAULT '[]',
+  confidence VARCHAR(10)  NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Crop-protection product knowledge base (admin-seeded from verified labels /
+-- RAB registration only — the AI must NEVER invent rows or field values here).
+CREATE TABLE IF NOT EXISTS ai_products (
+  id                VARCHAR(64) PRIMARY KEY,
+  name              VARCHAR(160) NOT NULL DEFAULT '',
+  name_en           VARCHAR(160) NOT NULL DEFAULT '',
+  active_ingredient VARCHAR(160) NOT NULL DEFAULT '',
+  type              VARCHAR(32)  NOT NULL DEFAULT '',
+  target_crop       VARCHAR(64)  NOT NULL DEFAULT '',
+  target_problem    VARCHAR(160) NOT NULL DEFAULT '',
+  application       TEXT         NOT NULL DEFAULT '',
+  dose              VARCHAR(120) NOT NULL DEFAULT '',
+  phi               VARCHAR(40)  NOT NULL DEFAULT '',
+  rei               VARCHAR(40)  NOT NULL DEFAULT '',
+  resistance_group  VARCHAR(40)  NOT NULL DEFAULT '',
+  registration      VARCHAR(120) NOT NULL DEFAULT '',
+  safety            TEXT         NOT NULL DEFAULT '',
+  source            VARCHAR(200) NOT NULL DEFAULT '',
+  verified_at       TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for the hot query paths (per-user orders/scans, catalog by category).
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_cat ON products (cat);
 CREATE INDEX IF NOT EXISTS idx_pwreset_phone ON password_resets (phone, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_user ON ai_messages (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cases_user ON crop_cases (user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_obs_case ON case_observations (case_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_research_user ON research_records (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_products_crop ON ai_products (target_crop);
 
 -- Function + trigger: keep carts.updated_at current (Postgres has no ON UPDATE).
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
@@ -124,5 +200,10 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_carts_updated_at ON carts;
 CREATE TRIGGER trg_carts_updated_at
   BEFORE UPDATE ON carts
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_cases_updated_at ON crop_cases;
+CREATE TRIGGER trg_cases_updated_at
+  BEFORE UPDATE ON crop_cases
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 

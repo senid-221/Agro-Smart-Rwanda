@@ -95,6 +95,12 @@ JWT_EXPIRES=7d
 
 OPENAI_API_KEY=sk-...               # server-side only, never in the app
 OPENAI_MODEL=gpt-4o-mini
+OPENAI_VISION_MODEL=gpt-4o-mini     # Crop Doctor photo analysis (use a vision model)
+
+# Optional live web research for the Crop Doctor (RAB/offline KB is always primary).
+# Leave TAVILY_API_KEY blank to run knowledge-base-only.
+TAVILY_API_KEY=
+RESEARCH_MAX_RESULTS=5
 ```
 
 Generate the JWT secret: `openssl rand -hex 32`.
@@ -104,6 +110,9 @@ Generate the JWT secret: `openssl rand -hex 32`.
 > **Forgot-password:** the reset code is generated server-side and shown in the app
 > (no SMS provider needed). Tune the OTP policy with the `OTP_*` / `RESET_TOKEN_TTL_SEC`
 > values if you wish.
+> **Crop AI Doctor:** `OPENAI_VISION_MODEL` powers photo analysis; set `TAVILY_API_KEY`
+> to enable ranked, cited live research (RAB/FAO/CABI/universities first). Without it the
+> Doctor still answers from the grounded offline knowledge base — it never invents sources.
 
 ---
 
