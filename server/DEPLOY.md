@@ -93,11 +93,6 @@ DB_NAME=agrosmart
 JWT_SECRET=<paste output of: openssl rand -hex 32>
 JWT_EXPIRES=7d
 
-ADMIN_NATIONAL_ID=1199080000000000
-ADMIN_PHONE=0788000000
-ADMIN_PASSWORD=<a strong admin password>   # change after first login
-ADMIN_NAME=Admin
-
 OPENAI_API_KEY=sk-...               # server-side only, never in the app
 OPENAI_MODEL=gpt-4o-mini
 ```
@@ -105,17 +100,33 @@ OPENAI_MODEL=gpt-4o-mini
 Generate the JWT secret: `openssl rand -hex 32`.
 
 > `.env` is git-ignored — it is never committed. The OpenAI key stays here.
+> No admin credentials live in `.env`; the admin is created explicitly in step 4.
 
 ---
 
-## 4. Create tables and seed data
+## 4. Create tables, seed data and the admin account
 
 ```bash
-npm run migrate     # creates all tables from schema.sql
-npm run seed        # seeds catalog + theme + provider, creates the admin user
+npm run migrate     # creates all tables, indexes, functions and triggers from schema.sql
+npm run seed        # seeds catalog + theme + provider ONLY (never creates a user)
+
+# Create the real administrator (national ID, phone, password, optional name):
+npm run create-admin -- <nationalId> <phone> <strongPassword> "<full name>"
+# e.g.  npm run create-admin -- 1200012345678901 0788123456 MyStr0ngPass! "Jane Admin"
 ```
 
-`npm run seed` is safe to re-run: catalog rows use `INSERT IGNORE` and an existing admin is left untouched.
+`npm run seed` is safe to re-run: catalog rows use `ON CONFLICT DO NOTHING`, so it
+**never removes store products** and never touches users.
+
+If a database was seeded by an older version that auto-created a demo admin, remove
+it with:
+
+```bash
+npm run remove-demo              # deletes the built-in demo account(s) + their carts/scans/orders
+npm run remove-demo -- <id> ...  # or target specific national IDs
+```
+
+`remove-demo` only deletes demo *accounts*; it never deletes catalog products.
 
 ---
 
@@ -155,7 +166,7 @@ Your app is now live at `https://yourdomain.com`.
 ## 7. First login
 
 1. Open `https://yourdomain.com`.
-2. **Admin tab** → national ID `1199080000000000`, phone `0788000000`, and the `ADMIN_PASSWORD` you set. (Change it after logging in.)
+2. **Admin tab** → the national ID, phone and password you passed to `npm run create-admin` in step 4.
 3. **Sign up** to create a normal farmer account, or share the link with farmers.
 
 To turn on real GPT answers, the provider is seeded as `remote` when `OPENAI_API_KEY` is set. In the Admin → AI provider panel you can switch between **remote (OpenAI)** and **builtin (on-device rules)**.
@@ -192,7 +203,8 @@ psql -U agrosmart -h 127.0.0.1 agrosmart < ~/agrosmart-YYYY-MM-DD.sql
 ## Security checklist
 
 - [ ] `JWT_SECRET` is a long random string (not the default).
-- [ ] `DB_PASSWORD` and `ADMIN_PASSWORD` are strong; default admin password changed after first login.
+- [ ] `DB_PASSWORD` is strong; the admin password passed to `create-admin` is strong.
+- [ ] No demo accounts remain (`npm run remove-demo` if the DB was seeded by an older build).
 - [ ] `OPENAI_API_KEY` only ever in `server/.env` (never committed, never in `public/`).
 - [ ] HTTPS enforced by certbot; nginx is the only public port (Node stays on 127.0.0.1).
 - [ ] PostgreSQL bound to localhost (`listen_addresses` default) — not exposed to the internet.

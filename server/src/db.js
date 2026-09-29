@@ -10,14 +10,10 @@ pool.on('error', err => console.error('Postgres pool error:', err.message))
 
 async function migrate() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
-  // schema.sql is a list of statements separated by ';' at end of line.
-  const statements = sql
-    .split(/;\s*[\r\n]+/)
-    .map(s => s.trim())
-    .filter(s => s.length && !s.startsWith('--'))
-  for (const stmt of statements) {
-    await pool.query(stmt)
-  }
+  // Run the whole file as one simple query so PL/pgSQL function bodies (which
+  // contain ';' and $$ quoting) are handled by Postgres, not a naive splitter.
+  // All statements are idempotent (IF NOT EXISTS / OR REPLACE / DROP IF EXISTS).
+  await pool.query(sql)
 }
 
 // Small helpers -------------------------------------------------------------

@@ -22,10 +22,11 @@ module.exports = {
     secret: process.env.JWT_SECRET || 'insecure-dev-secret',
     expires: process.env.JWT_EXPIRES || '7d'
   },
+  // Used only by `npm run create-admin`; no insecure demo defaults.
   seedAdmin: {
-    nationalId: process.env.ADMIN_NATIONAL_ID || '1199080000000000',
-    phone: process.env.ADMIN_PHONE || '0788000000',
-    password: process.env.ADMIN_PASSWORD || 'ChangeMe123!',
+    nationalId: process.env.ADMIN_NATIONAL_ID || '',
+    phone: process.env.ADMIN_PHONE || '',
+    password: process.env.ADMIN_PASSWORD || '',
     name: process.env.ADMIN_NAME || 'Admin'
   },
   openai: {

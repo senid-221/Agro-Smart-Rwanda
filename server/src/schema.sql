@@ -84,3 +84,22 @@ CREATE TABLE IF NOT EXISTS scans (
   meta       JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for the hot query paths (per-user orders/scans, catalog by category).
+CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_cat ON products (cat);
+
+-- Function + trigger: keep carts.updated_at current (Postgres has no ON UPDATE).
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_carts_updated_at ON carts;
+CREATE TRIGGER trg_carts_updated_at
+  BEFORE UPDATE ON carts
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+

@@ -1,6 +1,7 @@
-// `npm run seed` — apply schema, seed catalog/theme/provider and ensure an admin.
-// Catalog rows use ON CONFLICT DO NOTHING so re-seeding never clobbers admin edits.
-const bcrypt = require('bcryptjs')
+// `npm run seed` — apply schema and seed catalog/theme/provider.
+// Catalog rows use ON CONFLICT DO NOTHING so re-seeding never clobbers admin
+// edits and NEVER removes store products. No demo accounts are created here;
+// create a real administrator with `npm run create-admin` (see createAdmin.js).
 const { pool, migrate, query } = require('./db')
 const { loadStaticData } = require('./staticData')
 const config = require('./config')
@@ -45,32 +46,16 @@ async function seedSingletons() {
   )
 }
 
-async function seedAdmin() {
-  const admins = await query(`SELECT id FROM users WHERE role='admin' LIMIT 1`)
-  if (admins.length) return { created: false }
-  const a = config.seedAdmin
-  const hash = await bcrypt.hash(a.password, 10)
-  await query(
-    `INSERT INTO users (national_id, phone, password_hash, name, role)
-     VALUES ($1,$2,$3,$4,'admin')
-     ON CONFLICT (national_id) DO UPDATE SET role='admin', password_hash=EXCLUDED.password_hash`,
-    [a.nationalId, a.phone, hash, a.name]
-  )
-  return { created: true, nationalId: a.nationalId }
-}
-
 async function main() {
   await migrate()
-  console.log('✔ schema applied')
+  console.log('✔ schema applied (tables, functions, triggers, indexes)')
   const cat = await seedCatalog()
-  console.log(`✔ catalog seeded (${cat.products} products, ${cat.categories} categories)`)
+  console.log(`✔ catalog seeded (${cat.products} products, ${cat.categories} categories) — nothing removed`)
   await seedSingletons()
   console.log('✔ theme + provider seeded')
-  const admin = await seedAdmin()
-  console.log(admin.created
-    ? `✔ admin created (national ID ${admin.nationalId}) — set ADMIN_PASSWORD in .env`
-    : '✔ admin already exists (left untouched)')
+  console.log('→ next: create an administrator with `npm run create-admin <nationalId> <phone> <password> [name]`')
   await pool.end()
 }
 
 main().catch(err => { console.error('seed failed:', err); process.exit(1) })
+

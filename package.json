@@ -8,6 +8,8 @@
     "static": "node server.js",
     "migrate": "npm --prefix server run migrate",
     "seed": "npm --prefix server run seed",
+    "create-admin": "npm --prefix server run create-admin",
+    "remove-demo": "npm --prefix server run remove-demo",
     "install:server": "npm --prefix server install"
   }
 }

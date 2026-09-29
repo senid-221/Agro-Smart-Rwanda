@@ -5,22 +5,6 @@
 window.AS = window.AS || {}
 
 AS.CUSTOM = (function () {
-  // ---------- fixed admin account ----------
-  // The db row key is 'config'; the administrator's national ID is stored as
-  // `adminId` so it never collides with the row's primary `id`.
-  const DEFAULT_ADMIN = { adminId: '1199080000000000', phone: '0788000000', pin: '1234', name: 'Admin' }
-  if (!AS.db.find('admin', 'config')) AS.db.insert('admin', { id: 'config', ...DEFAULT_ADMIN })
-
-  const ADMIN = {
-    get() { return Object.assign({ id: 'config' }, DEFAULT_ADMIN, AS.db.find('admin', 'config') || {}) },
-    set(patch) { return AS.db.update('admin', 'config', patch) },
-    check(id, phone, pin) {
-      const a = ADMIN.get()
-      return String(id).trim().toLowerCase() === String(a.adminId).toLowerCase() &&
-        String(phone).trim() === String(a.phone) && String(pin).trim() === String(a.pin)
-    }
-  }
-
   // ---------- catalog resolution (custom over built-in) ----------
   const normUnit = u => (u && typeof u === 'object') ? { en: u.en || '', rw: u.rw || '' } : { en: 'piece', rw: 'igikoresho 1' }
   function normProduct(p) {
@@ -113,12 +97,11 @@ AS.CUSTOM = (function () {
     set(patch) { return AS.db.update('ai_provider', 'current', patch) }
   }
 
-  return { ADMIN, CATALOG, THEME, AIK, PROVIDER, DEFAULT_ADMIN }
+  return { CATALOG, THEME, AIK, PROVIDER }
 })()
 
 // convenience aliases used across screens
 AS.CATALOG = AS.CUSTOM.CATALOG
 AS.THEME = AS.CUSTOM.THEME
-AS.ADMIN = AS.CUSTOM.ADMIN
 AS.PROVIDER = AS.CUSTOM.PROVIDER
 AS.AIK = AS.CUSTOM.AIK

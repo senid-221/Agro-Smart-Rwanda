@@ -11,7 +11,6 @@ const state = {
   lang: localStorage.getItem('as_lang') || null,
   name: localStorage.getItem('as_name') || '',
   user: JSON.parse(localStorage.getItem('as_user') || 'null'),
-  accounts: JSON.parse(localStorage.getItem('as_accounts') || '[]'),
   onboarded: localStorage.getItem('as_onboarded') === '1' || !!localStorage.getItem('as_name'),
   route: { name: 'home' },
   history: JSON.parse(localStorage.getItem('as_history') || '[]'),
