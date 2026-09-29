@@ -64,30 +64,38 @@ const app = {
     else localStorage.removeItem('as_name')
     render()
   },
-  login(id, phone) {
-    const acc = state.accounts.find(a =>
-      a.id.toLowerCase() === id.toLowerCase() && a.phone === phone)
-    if (!acc) return 'notfound'
-    state.user = { id: acc.id, phone: acc.phone, role: 'user', at: Date.now() }
-    localStorage.setItem('as_user', JSON.stringify(state.user))
+  async _session(r) {
+    AS.auth.setToken(r.token)
+    state.user = r.user
+    localStorage.setItem('as_user', JSON.stringify(r.user))
+    if (r.user && r.user.name) {
+      state.name = r.user.name
+      localStorage.setItem('as_name', r.user.name)
+    }
+    await AS.sync()
     render()
     return null
   },
-  loginAdmin(id, phone, pin) {
-    if (!AS.ADMIN.check(id, phone, pin)) return 'badpin'
-    state.user = { id: String(id).trim(), phone: String(phone).trim(), role: 'admin', at: Date.now() }
-    localStorage.setItem('as_user', JSON.stringify(state.user))
-    render()
-    return null
+  async login(id, phone, password) {
+    const r = await AS.api.post('/auth/login', { nationalId: id, phone, password })
+    if (r.error === 'notfound') return 'notfound'
+    if (r.error === 'badpass') return 'badpass'
+    if (r.error) return r.error
+    return app._session(r)
   },
-  signup(id, phone) {
-    if (state.accounts.some(a => a.id.toLowerCase() === id.toLowerCase())) return 'exists'
-    state.accounts.push({ id, phone, at: Date.now() })
-    localStorage.setItem('as_accounts', JSON.stringify(state.accounts))
-    state.user = { id, phone, role: 'user', at: Date.now() }
-    localStorage.setItem('as_user', JSON.stringify(state.user))
-    render()
-    return null
+  async loginAdmin(id, phone, password) {
+    const r = await AS.api.post('/auth/login', { nationalId: id, phone, password, admin: true })
+    if (r.error === 'badpin') return 'badpin'
+    if (r.error === 'notfound') return 'notfound'
+    if (r.error) return r.error
+    return app._session(r)
+  },
+  async signup(id, phone, password, name) {
+    const r = await AS.api.post('/auth/signup', { nationalId: id, phone, password, name: name || '' })
+    if (r.error === 'exists') return 'exists'
+    if (r.error === 'weak_password') return 'weak'
+    if (r.error) return r.error
+    return app._session(r)
   },
   applyTheme() {
     if (AS.THEME && AS.THEME.apply) AS.THEME.apply(state.lang || 'rw', t())
@@ -99,6 +107,7 @@ const app = {
   logout() {
     state.user = null
     localStorage.removeItem('as_user')
+    if (AS.auth && AS.auth.clearToken) AS.auth.clearToken()
     render()
   },
   addHistory(entry) {
@@ -209,5 +218,23 @@ function render() {
   shell()
 }
 
-render()
+AS.onUnauthorized = () => {
+  state.user = null
+  localStorage.removeItem('as_user')
+  render()
+}
+
+async function boot() {
+  // Online-only: if we have a session, refresh the server-backed cache first.
+  if (state.user && AS.auth.getToken()) {
+    const r = await AS.sync()
+    if (r && r.error === 'network') {
+      // keep the cached session but flag the connection problem
+      state.offline = true
+    }
+  }
+  render()
+}
+
+boot()
 })()

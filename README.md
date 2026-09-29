@@ -20,26 +20,56 @@ modern agriculture — with all content focused on Rwanda's crops, seasons and s
 - **Learn Agriculture** — lessons on land prep, seed selection, IPM, post-harvest
   handling, irrigation, climate-smart farming, livestock and agri-business.
 - **Kinyarwanda + English** — switchable anywhere, remembered on the device.
-- **Installable & offline** — PWA with manifest + service worker; works without
-  internet once loaded. Scan history is stored locally.
+- **Installable PWA** — manifest + service worker; the app shell caches for fast
+  loads. The production app is **online-only**: accounts, catalog, orders, AI and
+  admin all come from the server database (see below).
+
+## Production backend (real database, AI & admin)
+
+The `server/` directory is the real production stack that replaces the old
+on-device prototype:
+
+- **Node.js / Express** API that also serves the static frontend.
+- **MySQL** database — users, products, categories, cart, orders, theme, AI
+  training (Q&A + glossary), provider config and scan history.
+- **OpenAI (GPT)** — the API key is stored **only** on the server (`.env`) and
+  proxied through `POST /api/ai/chat`; it is never shipped to the browser.
+- **JWT authentication** — real sign-up/login with bcrypt-hashed passwords and
+  an `admin` role gating the control panel.
+
+Full step-by-step hosting guide (Hostinger VPS: Node + MySQL + pm2 + nginx +
+SSL): see **[`server/DEPLOY.md`](server/DEPLOY.md)**.
+
+```bash
+cd server
+npm install
+cp .env.example .env      # set DB creds, JWT_SECRET, OPENAI_API_KEY, ADMIN_PASSWORD
+npm run migrate           # create tables
+npm run seed              # seed catalog + create the admin user
+npm start                 # http://localhost:8080  (API + frontend)
+```
+
 
 ## Run it
 
-No build step and no dependencies — plain HTML/CSS/JS. Two ways to open it:
-
-**Option 1 — double-click (easiest):** open `public/index.html` directly in any
-browser. Everything works (AI scan, lessons, library); only the "install app"
-prompt and offline caching need a server/HTTPS.
-
-**Option 2 — local server (full PWA):**
+The full app needs the backend (database + auth + AI). Run it from `server/`:
 
 ```bash
-node server.js        # serves http://localhost:8080
+cd server && npm install && npm start   # serves the API and the app on :8080
 ```
 
-Any static file server works too. Open `http://localhost:8080` on your phone
-(same Wi-Fi, use your PC's LAN IP) and choose **"Add to Home screen"** in the
-browser menu to install it like a native app.
+For **frontend-only** work (no database), a zero-dependency static server is
+still included — note that login, store, orders and remote AI will not function
+without the backend:
+
+```bash
+node server.js        # static-only preview at http://localhost:8080
+```
+
+Open `http://localhost:8080` on your phone (same Wi-Fi, use your PC's LAN IP)
+and choose **"Add to Home screen"** in the browser menu to install it like a
+native app.
+
 
 ## Install on a phone
 
@@ -54,21 +84,29 @@ service worker on mobile).
 ## Project layout
 
 ```
-server.js              zero-dependency static server (Node)
+server.js              zero-dependency static server (frontend-only preview)
+server/                production backend (Express + MySQL + OpenAI proxy + JWT)
+  src/index.js         app entry: serves /api and the static frontend
+  src/routes/          auth, catalog, orders, ai, admin
+  src/schema.sql       MySQL schema
+  src/seed.js          catalog + admin seeding
+  DEPLOY.md            Hostinger VPS deployment guide
+  .env.example         required environment variables (copy to .env)
 public/
   index.html           app shell + PWA wiring
   styles.css           mobile-first UI
   manifest.webmanifest PWA manifest
-  sw.js                offline service worker
+  sw.js                service worker (caches shell; never caches /api)
   js/
-    app.js             router, state, navigation
+    app.js             router, state, navigation, auth session
+    api.js             HTTP client for the backend (/api) + cache hydration
     i18n.js            Kinyarwanda / English strings
     engine/detector.js pixel-analysis AI + diagnosis ranking
     data/diseases.js   Rwanda crop disease knowledge base
     data/crops.js      cultivation guides
     data/fertilizers.js fertilizer & soil guide
     data/lessons.js    agro-learning lessons
-    screens/           home, scan, learn, library, fertilizer, settings
+    screens/           home, scan, learn, library, fertilizer, store, assistant, dashboards, settings
 ```
 
 ## Notes

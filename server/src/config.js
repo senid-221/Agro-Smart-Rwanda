@@ -1,0 +1,34 @@
+require('dotenv').config()
+const path = require('path')
+
+const root = path.join(__dirname, '..')
+
+module.exports = {
+  root,
+  port: parseInt(process.env.PORT || '8080', 10),
+  nodeEnv: process.env.NODE_ENV || 'development',
+  staticDir: path.resolve(root, process.env.STATIC_DIR || '../public'),
+  corsOrigin: process.env.CORS_ORIGIN || '',
+  db: {
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'agrosmart',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'agrosmart'
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET || 'insecure-dev-secret',
+    expires: process.env.JWT_EXPIRES || '7d'
+  },
+  seedAdmin: {
+    nationalId: process.env.ADMIN_NATIONAL_ID || '1199080000000000',
+    phone: process.env.ADMIN_PHONE || '0788000000',
+    password: process.env.ADMIN_PASSWORD || 'ChangeMe123!',
+    name: process.env.ADMIN_NAME || 'Admin'
+  },
+  openai: {
+    key: process.env.OPENAI_API_KEY || '',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+  }
+}

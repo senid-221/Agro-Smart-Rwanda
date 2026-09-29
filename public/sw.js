@@ -1,4 +1,4 @@
-const CACHE = 'agrosmart-v13'
+const CACHE = 'agrosmart-v14'
 const ASSETS = [
   '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png', '/icon-192.png', '/icon-512.png',
   '/js/app.js', '/js/i18n.js', '/js/db.js', '/js/custom.js', '/js/api.js', '/js/ai.js', '/js/research.js', '/js/engine/detector.js',
@@ -21,6 +21,12 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
+  const url = new URL(e.request.url)
+  // Never cache backend API calls — the app is online-only and data must be live.
+  if (url.pathname.startsWith('/api/')) {
+    e.respondWith(fetch(e.request))
+    return
+  }
   e.respondWith(
     fetch(e.request)
       .then(res => {

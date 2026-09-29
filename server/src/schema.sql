@@ -1,0 +1,85 @@
+-- AgroSmart Rwanda — MySQL schema
+-- Charset utf8mb4 so Kinyarwanda text and emoji store correctly.
+
+CREATE TABLE IF NOT EXISTS users (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  national_id   VARCHAR(32)  NOT NULL UNIQUE,
+  phone         VARCHAR(20)  NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name          VARCHAR(120) NOT NULL DEFAULT '',
+  role          ENUM('user','admin') NOT NULL DEFAULT 'user',
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS products (
+  id      VARCHAR(64) PRIMARY KEY,
+  cat     VARCHAR(32) NOT NULL DEFAULT 'seeds',
+  en      VARCHAR(160) NOT NULL DEFAULT '',
+  rw      VARCHAR(160) NOT NULL DEFAULT '',
+  price   INT NOT NULL DEFAULT 0,
+  unit_en VARCHAR(64) NOT NULL DEFAULT 'piece',
+  unit_rw VARCHAR(64) NOT NULL DEFAULT 'igikoresho 1',
+  emoji   VARCHAR(16) NOT NULL DEFAULT '',
+  img     MEDIUMTEXT,
+  hidden  TINYINT(1) NOT NULL DEFAULT 0,
+  sort    INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id     VARCHAR(32) PRIMARY KEY,
+  en     VARCHAR(80) NOT NULL DEFAULT '',
+  rw     VARCHAR(80) NOT NULL DEFAULT '',
+  emoji  VARCHAR(16) NOT NULL DEFAULT '',
+  hidden TINYINT(1) NOT NULL DEFAULT 0,
+  sort   INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS carts (
+  user_id    INT PRIMARY KEY,
+  items      JSON NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS orders (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT,
+  items      JSON NOT NULL,
+  total      INT NOT NULL DEFAULT 0,
+  status     VARCHAR(20) NOT NULL DEFAULT 'received',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS theme (
+  id   VARCHAR(16) PRIMARY KEY,
+  data JSON NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ai_qa (
+  id   VARCHAR(64) PRIMARY KEY,
+  q    TEXT, a TEXT,
+  q_en TEXT, a_en TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ai_glossary (
+  id     VARCHAR(64) PRIMARY KEY,
+  term   VARCHAR(120),
+  def    TEXT,
+  def_en TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS provider (
+  id             VARCHAR(16) PRIMARY KEY,
+  mode           VARCHAR(20) NOT NULL DEFAULT 'remote',
+  model          VARCHAR(64) NOT NULL DEFAULT '',
+  research_online TINYINT(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS scans (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT,
+  crop       VARCHAR(32),
+  disease    VARCHAR(64),
+  confidence INT,
+  meta       JSON,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,31 @@
+# nginx reverse proxy for AgroSmart Rwanda on a Hostinger VPS.
+# The Node app (pm2) listens on 127.0.0.1:8080 and serves BOTH the static
+# frontend and the /api backend, so nginx only terminates TLS and proxies.
+#
+# Install:  sudo cp nginx.conf.example /etc/nginx/sites-available/agrosmart
+#           sudo ln -s /etc/nginx/sites-available/agrosmart /etc/nginx/sites-enabled/
+#           sudo nginx -t && sudo systemctl reload nginx
+# Then get a certificate:  sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # Let certbot serve the ACME challenge, proxy everything else.
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        client_max_body_size 10m;
+    }
+}
+
+# After `certbot --nginx`, certbot rewrites this file to add a 443 server block
+# with the managed SSL certificate and an HTTP->HTTPS redirect automatically.

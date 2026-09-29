@@ -37,7 +37,10 @@ AS.renderLogin = function (container, app) {
           ${admin ? `<div class="field">
             <img class="f-ico" src="img/settings.png" alt="">
             <input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="${tt('login_pin')}" value="${esc(draft.pin)}" />
-          </div>` : ''}
+          </div>` : `<div class="field">
+            <img class="f-ico" src="img/settings.png" alt="">
+            <input id="loginPin" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" placeholder="${tt('login_password')}" value="${esc(draft.pin)}" />
+          </div>`}
           <div class="err" id="loginErr"></div>
           <button class="btn btn-primary" id="loginBtn">${tt(btnKey)} →</button>
           <p class="auth-hint">${tt(hintKey)}</p>
@@ -55,22 +58,31 @@ AS.renderLogin = function (container, app) {
     container.querySelector('#tabLogin').onclick = () => setMode('login')
     container.querySelector('#tabSignup').onclick = () => setMode('signup')
     container.querySelector('#tabAdmin').onclick = () => setMode('admin')
-    container.querySelector('#loginBtn').onclick = () => {
+    container.querySelector('#loginBtn').onclick = async () => {
+      const btn = container.querySelector('#loginBtn')
       const id = container.querySelector('#loginId').value.trim()
       const phone = container.querySelector('#loginPhone').value.replace(/[\s-]/g, '')
+      const pass = container.querySelector('#loginPin').value
       const err = container.querySelector('#loginErr')
+      err.textContent = ''
       if (!id) { err.textContent = tt('login_err_id'); return }
       if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
-      if (admin) {
-        const pin = container.querySelector('#loginPin').value.trim()
-        if (!pin) { err.textContent = tt('login_err_pin'); return }
-        const problem = app.loginAdmin(id, phone, pin)
-        if (problem === 'badpin') err.textContent = tt('auth_err_badpin')
-        return
+      if (!pass) { err.textContent = admin ? tt('login_err_pin') : tt('login_err_pass'); return }
+      btn.disabled = true
+      let problem
+      try {
+        if (admin) problem = await app.loginAdmin(id, phone, pass)
+        else if (signup) problem = await app.signup(id, phone, pass)
+        else problem = await app.login(id, phone, pass)
+      } catch (e) { problem = 'network' }
+      btn.disabled = false
+      if (!problem) return
+      const map = {
+        notfound: 'auth_err_notfound', exists: 'auth_err_exists',
+        badpin: 'auth_err_badpin', badpass: 'auth_err_badpass',
+        weak: 'auth_err_weak', network: 'auth_err_network'
       }
-      const problem = signup ? app.signup(id, phone) : app.login(id, phone)
-      if (problem === 'notfound') err.textContent = tt('auth_err_notfound')
-      if (problem === 'exists') err.textContent = tt('auth_err_exists')
+      err.textContent = tt(map[problem] || 'auth_err_generic')
     }
   }
 

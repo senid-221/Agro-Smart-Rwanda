@@ -396,14 +396,10 @@ AS.renderAdmin = function (container, app) {
             <option value="remote" ${p.mode === 'remote' ? 'selected' : ''}>${tr('admin_mode_remote')}</option>
           </select>
         </label>
-        <label>${tr('admin_provider_name')}<input id="pv_name" value="${esc(p.name)}"></label>
-        <label>${tr('admin_model')}<input id="pv_model" value="${esc(p.model)}" placeholder="gpt-4o-mini / llama-3 ..."></label>
-        <label>${tr('admin_api_url')}<input id="pv_url" value="${esc(p.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></label>
-        <label>${tr('admin_api_key')}<input id="pv_key" type="password" value="${esc(p.apiKey)}"></label>
-        <label class="check"><input id="pv_req" type="checkbox" ${p.requireRemote ? 'checked' : ''}> ${tr('admin_require_remote')}</label>
+        <label>${tr('admin_model')}<input id="pv_model" value="${esc(p.model)}" placeholder="gpt-4o-mini"></label>
         <label class="check"><input id="pv_res" type="checkbox" ${p.researchOnline ? 'checked' : ''}> ${tr('admin_research_online')}</label>
         <p class="progress-note">${tr('admin_research_hint')}</p>
-        <p class="progress-note">${tr('admin_provider_hint')}</p>
+        <p class="progress-note">${tr('admin_key_server_note')}</p>
         <div class="form-row">
           <button class="btn btn-primary sm" id="pv_save">${tr('admin_save')}</button>
           <button class="btn btn-outline sm" id="pv_test">${tr('admin_test')}</button>
@@ -415,20 +411,17 @@ AS.renderAdmin = function (container, app) {
       await AS.api.post('/admin/provider/save', {
         provider: {
           mode: body.querySelector('#pv_mode').value,
-          name: body.querySelector('#pv_name').value,
           model: body.querySelector('#pv_model').value,
-          apiUrl: body.querySelector('#pv_url').value.trim(),
-          apiKey: body.querySelector('#pv_key').value,
-          requireRemote: body.querySelector('#pv_req').checked,
           researchOnline: body.querySelector('#pv_res').checked
         }
       })
+      await AS.sync()
       await load()
       note.textContent = tr('admin_saved')
     }
     body.querySelector('#pv_test').onclick = async () => {
       note.textContent = tr('admin_testing')
-      const res = await AS.aiChat(lang === 'rw' ? 'Muraho' : 'Hello', lang, {})
+      const res = await AS.api.post('/ai/chat', { message: lang === 'rw' ? 'Muraho' : 'Hello', lang, ctx: {} })
       note.textContent = (res && res.text ? '✓ ' : '✗ ') + (res && res.intent ? res.intent : 'error') + ': ' + (res && res.text ? res.text.slice(0, 80) : '')
     }
   }
