@@ -332,6 +332,13 @@ body {
   cursor: pointer; text-align: center;
 }
 .link-btn:active { opacity: 0.7; }
+.otp-box {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 12px; padding: 12px 14px; border-radius: 12px;
+  background: rgba(76,175,80,0.10); border: 1.5px dashed var(--green-500);
+}
+.otp-label { font-size: 12.5px; color: var(--text-soft); font-weight: 600; }
+.otp-code { font-size: 22px; font-weight: 800; letter-spacing: 4px; color: var(--green-500); font-variant-numeric: tabular-nums; }
 
 /* ---------- store ---------- */
 .store-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

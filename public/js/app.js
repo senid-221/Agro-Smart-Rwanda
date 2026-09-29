@@ -96,15 +96,14 @@ const app = {
     if (r.error) return r.error
     return app._session(r)
   },
-  // Forgot-password flow. Each returns null on success or an error code string.
+  // Forgot-password flow. forgotPassword returns { code } on success or { error }.
   async forgotPassword(phone) {
     const r = await AS.api.post('/auth/forgot', { phone })
-    if (r.error === 'network') return 'network'
-    if (r.error === 'notfound') return 'notfound'
-    if (r.error === 'too_soon') return 'too_soon'
-    if (r.error === 'sms_unconfigured' || r.error === 'sms_failed') return 'sms'
-    if (r.error) return r.error
-    return null
+    if (r.error === 'network') return { error: 'network' }
+    if (r.error === 'notfound') return { error: 'notfound' }
+    if (r.error === 'too_soon') return { error: 'too_soon' }
+    if (r.error) return { error: r.error }
+    return { code: r.code }
   },
   async verifyOtp(phone, code) {
     const r = await AS.api.post('/auth/verify-otp', { phone, code })

@@ -4,7 +4,6 @@ const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const { query } = require('../db')
 const config = require('../config')
-const { sendSms, isConfigured } = require('../sms')
 const { sign, requireAuth, publicUser } = require('../middleware/auth')
 
 const router = express.Router()
@@ -78,11 +77,11 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({ user: publicUser(rows[0]) })
 })
 
-// POST /api/auth/forgot  — start a reset: send a 6-digit OTP by SMS to the registered phone.
+// POST /api/auth/forgot  — start a reset: generate a random 6-digit OTP for the
+// registered phone and return it to the app (no SMS provider; the app shows the code).
 router.post('/forgot', async (req, res) => {
   const phone = normPhone(req.body.phone)
   if (!/^(\+?250|0)7\d{8}$/.test(phone)) return res.status(400).json({ error: 'bad_phone' })
-  if (!isConfigured()) return res.status(503).json({ error: 'sms_unconfigured' })
 
   const user = await findByPhone(phone)
   if (!user) return res.status(404).json({ error: 'notfound' })
@@ -114,11 +113,7 @@ router.post('/forgot', async (req, res) => {
     [user.id, phone, hash, expires]
   )
 
-  const msg = `AgroSmart Rwanda: your password reset code is ${code}. It expires in ${Math.round(config.reset.otpTtlSec / 60)} minutes. Do not share it.`
-  const sent = await sendSms(phone, msg)
-  if (!sent.ok) return res.status(502).json({ error: sent.error || 'sms_failed' })
-
-  res.json({ sent: true, expiresSec: config.reset.otpTtlSec })
+  res.json({ sent: true, code, expiresSec: config.reset.otpTtlSec })
 })
 
 // POST /api/auth/verify-otp  — confirm the code; returns a short-lived reset token.

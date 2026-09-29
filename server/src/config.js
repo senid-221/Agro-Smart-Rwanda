@@ -34,14 +34,7 @@ module.exports = {
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
   },
-  // Africa's Talking SMS — used to deliver "Forgot password" OTP codes.
-  sms: {
-    username: process.env.AT_USERNAME || '',
-    apiKey: process.env.AT_API_KEY || '',
-    senderId: process.env.AT_SENDER_ID || '',
-    apiUrl: process.env.AT_API_URL || 'https://api.africastalking.com/version1/messaging'
-  },
-  // Password-reset OTP policy.
+  // Password-reset OTP policy. Codes are generated server-side and shown in the app.
   reset: {
     otpTtlSec: parseInt(process.env.OTP_TTL_SEC || '600', 10),
     otpMaxAttempts: parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10),
