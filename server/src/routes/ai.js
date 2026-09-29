@@ -4,6 +4,7 @@ const openai = require('../openai')
 const vision = require('../vision')
 const research = require('../research')
 const knowledge = require('../knowledge')
+const analytics = require('../analytics')
 const { requireAuth } = require('../middleware/auth')
 const { allProducts, providerData } = require('./catalog')
 
@@ -103,6 +104,9 @@ async function doctorTurn(userId, { message, lang, ctx = {}, kind = 'report', st
   const isHealthProblem = looksLikeProblem(message, cropId)
   const caseRow = await resolveCase(userId, ctx, cropId, message, isHealthProblem)
 
+  // Emergency Crop Alert: flag notifiable / rapidly spreading / severe problems.
+  const em = analytics.emergency({ text: message, diseases: knowledge.detectDiseases(message, cropId) })
+
   const scan = ctx.scan ? String(ctx.scan) : ''
 
   const [glossary, qa, products, prods, history, observations] = await Promise.all([
@@ -151,9 +155,11 @@ async function doctorTurn(userId, { message, lang, ctx = {}, kind = 'report', st
       `UPDATE crop_cases
        SET symptoms = $2,
            crop = COALESCE(NULLIF(crop, ''), $3),
+           emergency = $4,
+           emergency_reason = $5,
            status = CASE WHEN status = 'open' THEN 'monitoring' ELSE status END
        WHERE id = $1`,
-      [caseRow.id, clip(message, 1000), cropId || '']
+      [caseRow.id, clip(message, 1000), cropId || '', em.emergency, em.reason]
     )
   }
 
@@ -165,7 +171,7 @@ async function doctorTurn(userId, { message, lang, ctx = {}, kind = 'report', st
       clip(res.text, MAX_FINDINGS), JSON.stringify(res.sources || []), res.confidence || '']
   )
 
-  return { text, caseId: caseRow ? caseRow.id : null, cropId, sources: res.sources, confidence: res.confidence }
+  return { text, caseId: caseRow ? caseRow.id : null, cropId, sources: res.sources, confidence: res.confidence, emergency: em }
 }
 
 async function aiAvailable(lang) {
@@ -193,7 +199,7 @@ router.post('/chat', requireAuth, async (req, res) => {
 
   try {
     const out = await doctorTurn(req.user.id, { message, lang, ctx })
-    res.json({ intent: 'remote', ctx, text: out.text, caseId: out.caseId, cropId: out.cropId, sources: out.sources, confidence: out.confidence })
+    res.json({ intent: 'remote', ctx, text: out.text, caseId: out.caseId, cropId: out.cropId, sources: out.sources, confidence: out.confidence, emergency: out.emergency })
   } catch (err) {
     res.status(502).json({
       error: 'ai_unavailable', code: err.code || 'upstream',
@@ -287,7 +293,7 @@ router.post('/cases/:id/followup', requireAuth, async (req, res) => {
     const out = await doctorTurn(req.user.id, {
       message: note, lang, ctx: { caseId: c.id }, kind: 'followup', statusChange
     })
-    res.json({ text: out.text, caseId: c.id, sources: out.sources, confidence: out.confidence })
+    res.json({ text: out.text, caseId: c.id, sources: out.sources, confidence: out.confidence, emergency: out.emergency })
   } catch (err) {
     res.status(502).json({
       error: 'ai_unavailable', code: err.code || 'upstream',
@@ -308,6 +314,188 @@ router.post('/cases/:id/status', requireAuth, async (req, res) => {
   if (!c) return res.status(404).json({ error: 'case_not_found' })
   await query('UPDATE crop_cases SET status = $2 WHERE id = $1', [c.id, status])
   res.json({ ok: true, status })
+})
+
+// ---------- Case Intelligence (deterministic, KB-grounded) ----------
+
+const addDays = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+
+const tasksFor = caseId =>
+  query(
+    `SELECT id, kind, title, detail, task_date, status FROM case_tasks
+     WHERE case_id = $1 ORDER BY task_date ASC NULLS LAST, id ASC`,
+    [caseId]
+  )
+
+// Build a Smart Treatment Plan from the knowledge base only — never invent a
+// product, dose or chemical. Returns [{ kind, title, detail, offsetDays }].
+function buildPlan(cropId, symptomsText) {
+  const kb = knowledge.load()
+  const matches = knowledge.detectDiseases(symptomsText || '', cropId)
+  const top = matches[0] || null
+  const tasks = []
+
+  if (top) {
+    const treat = (top.treatment && top.treatment.en) || []
+    const name = (top.name && top.name.en) || 'the suspected disease'
+    treat.slice(0, 2).forEach((t, i) =>
+      tasks.push({ kind: 'treatment', offsetDays: i * 3, title: 'Treat: ' + name, detail: String(t) }))
+    const prev = (top.organic && top.organic.en) || (top.prevention && top.prevention.en) || []
+    if (prev.length) tasks.push({ kind: 'prevent', offsetDays: 7, title: 'Prevent recurrence', detail: String(prev[0]) })
+  }
+
+  tasks.push({
+    kind: 'monitor', offsetDays: 2, title: 'Scout the affected plants',
+    detail: 'Check affected plants every 2-3 days and record whether symptoms are improving, stable or worsening.'
+  })
+
+  const guide = (kb.guides || []).find(g => g.id === cropId)
+  const fert = guide && guide.fertilizing && guide.fertilizing.en
+  if (fert && fert.length) {
+    tasks.push({ kind: 'prevent', offsetDays: 5, title: 'Support crop recovery', detail: String(fert[0]) })
+  }
+
+  return tasks.sort((a, b) => a.offsetDays - b.offsetDays)
+}
+
+// GET /api/ai/cases/:id/insights — timeline + recovery + effectiveness + tasks.
+router.get('/cases/:id/insights', requireAuth, async (req, res) => {
+  try {
+    const c = await getCase(req.user.id, req.params.id)
+    if (!c) return res.status(404).json({ error: 'case_not_found' })
+    const obs = await observationsFor(c.id, 100)
+    const tasks = await tasksFor(c.id)
+    res.json({
+      case: c,
+      timeline: analytics.timeline(obs),
+      recovery: analytics.recoveryScore(obs),
+      effectiveness: analytics.effectiveness(obs),
+      emergency: { emergency: !!c.emergency, reason: c.emergency_reason || '' },
+      tasks
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'insights_failed', message: err.message })
+  }
+})
+
+// POST /api/ai/cases/:id/plan — (re)generate the Smart Treatment Plan.
+// Clears pending tasks and inserts the freshly built plan.
+router.post('/cases/:id/plan', requireAuth, async (req, res) => {
+  try {
+    const c = await getCase(req.user.id, req.params.id)
+    if (!c) return res.status(404).json({ error: 'case_not_found' })
+    await query(`DELETE FROM case_tasks WHERE case_id = $1 AND status = 'pending'`, [c.id])
+    const plan = buildPlan(c.crop, c.symptoms)
+    for (const t of plan) {
+      await query(
+        `INSERT INTO case_tasks (case_id, user_id, kind, title, detail, task_date)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [c.id, req.user.id, t.kind, clip(t.title, 200), clip(t.detail, 2000), addDays(t.offsetDays)]
+      )
+    }
+    res.json({ ok: true, tasks: await tasksFor(c.id) })
+  } catch (err) {
+    res.status(500).json({ error: 'plan_failed', message: err.message })
+  }
+})
+
+// POST /api/ai/cases/:id/tasks  { kind, title, detail, taskDate } — add a task.
+router.post('/cases/:id/tasks', requireAuth, async (req, res) => {
+  try {
+    const c = await getCase(req.user.id, req.params.id)
+    if (!c) return res.status(404).json({ error: 'case_not_found' })
+    const b = req.body || {}
+    const kind = ['treatment', 'monitor', 'prevent', 'escalate'].includes(b.kind) ? b.kind : 'monitor'
+    const title = clip(b.title || '', 200)
+    if (!title) return res.status(400).json({ error: 'empty_title' })
+    const rows = await query(
+      `INSERT INTO case_tasks (case_id, user_id, kind, title, detail, task_date)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [c.id, req.user.id, kind, title, clip(b.detail || '', 2000), b.taskDate || null]
+    )
+    res.json({ ok: true, task: rows[0] })
+  } catch (err) {
+    res.status(500).json({ error: 'task_failed', message: err.message })
+  }
+})
+
+// POST /api/ai/tasks/:taskId  { status } — complete/skip a task. Completing a
+// 'treatment' task also records a treatment observation (feeds effectiveness).
+router.post('/tasks/:taskId', requireAuth, async (req, res) => {
+  try {
+    const status = ['pending', 'done', 'skipped'].includes(req.body.status) ? req.body.status : 'done'
+    const rows = await query(
+      `SELECT * FROM case_tasks WHERE id = $1 AND user_id = $2`,
+      [req.params.taskId, req.user.id]
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'task_not_found' })
+    await query(
+      `UPDATE case_tasks SET status = $2, completed_at = CASE WHEN $2='done' THEN NOW() ELSE NULL END
+       WHERE id = $1`,
+      [task.id, status]
+    )
+    if (status === 'done' && task.kind === 'treatment') {
+      await query(
+        `INSERT INTO case_observations (case_id, user_id, kind, note)
+         VALUES ($1, $2, 'treatment', $3)`,
+        [task.case_id, req.user.id, clip('Applied treatment: ' + task.title + (task.detail ? ' — ' + task.detail : ''), 2000)]
+      )
+    }
+    res.json({ ok: true, status })
+  } catch (err) {
+    res.status(500).json({ error: 'task_failed', message: err.message })
+  }
+})
+
+// GET /api/ai/cases/:id/report — deterministic professional farm report text.
+router.get('/cases/:id/report', requireAuth, async (req, res) => {
+  try {
+    const c = await getCase(req.user.id, req.params.id)
+    if (!c) return res.status(404).json({ error: 'case_not_found' })
+    const [obs, tasks] = await Promise.all([observationsFor(c.id, 100), tasksFor(c.id)])
+    const recovery = analytics.recoveryScore(obs)
+    const eff = analytics.effectiveness(obs)
+
+    const lines = []
+    lines.push('CROP HEALTH REPORT')
+    lines.push('Generated: ' + new Date().toISOString().slice(0, 10))
+    lines.push('')
+    lines.push('Case #' + c.id + ' — ' + (c.crop || 'crop'))
+    if (c.variety) lines.push('Variety: ' + c.variety)
+    if (c.district || c.sector) lines.push('Location: ' + [c.sector, c.district].filter(Boolean).join(', '))
+    lines.push('Status: ' + c.status)
+    lines.push('')
+    lines.push('Reported symptoms:')
+    lines.push('  ' + (c.symptoms || '(none recorded)'))
+    lines.push('')
+    lines.push('Recovery score: ' +
+      (recovery.score == null ? 'insufficient data' : recovery.score + '/100 (' + recovery.label + ', ' + recovery.dataPoints + ' follow-up(s))'))
+    lines.push('Treatment effectiveness: ' + eff.verdict)
+    lines.push('  ' + eff.evidence)
+    if (c.emergency) {
+      lines.push('')
+      lines.push('EMERGENCY ALERT: ' + (c.emergency_reason || 'serious problem detected'))
+    }
+    lines.push('')
+    lines.push('Action plan (' + tasks.length + ' task(s)):')
+    tasks.forEach(t => {
+      lines.push('  [' + t.status + '] ' + (t.task_date || 'no date') + ' — ' + t.kind + ': ' + t.title)
+      if (t.detail) lines.push('        ' + t.detail)
+    })
+    lines.push('')
+    lines.push('Progress timeline:')
+    analytics.timeline(obs).forEach(day => {
+      lines.push('  ' + day.date + ':')
+      day.events.forEach(e => lines.push('    - ' + e.kind + (e.statusChange ? ' (' + e.statusChange + ')' : '') + ': ' + (e.note || '').slice(0, 120)))
+    })
+    lines.push('')
+    lines.push('Note: advice is grounded in RAB and verified Rwanda crop-protection knowledge. For notifiable or severe problems, contact RAB.')
+
+    res.json({ report: lines.join('\n'), case: c, recovery, effectiveness: eff, tasks })
+  } catch (err) {
+    res.status(500).json({ error: 'report_failed', message: err.message })
+  }
 })
 
 // GET /api/ai/history — restore the Doctor conversation when the farmer reopens it.

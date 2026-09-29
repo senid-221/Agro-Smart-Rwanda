@@ -4,7 +4,7 @@ const {
   renderHome, renderScan, renderLearn, renderLessonDetail, renderCrops, renderCropDetail,
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
-  renderAssistant, renderDashboard, renderAdmin
+  renderAssistant, renderCase, renderDashboard, renderAdmin
 } = AS
 
 const state = {
@@ -34,6 +34,7 @@ const ROUTES = {
   cart: { screen: 'store', render: c => renderCart(c, app) },
   orders: { screen: 'store', render: c => renderOrders(c, app) },
   assistant: { screen: 'assistant', render: c => renderAssistant(c, app) },
+  case: { screen: 'assistant', render: c => renderCase(c, app, state.route.params.id) },
   dashboard: { screen: 'dashboard', render: c => renderDashboard(c, app) },
   admin: { screen: 'admin', render: c => renderAdmin(c, app) },
   settings: { screen: 'more', render: c => renderSettings(c, app) }

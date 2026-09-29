@@ -46,7 +46,10 @@ AS.renderAssistant = function (container, app) {
 
     <div class="card" id="caseBanner" hidden style="padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;justify-content:space-between">
       <span id="caseText" class="progress-note" style="margin:0"></span>
-      <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
+      <span style="display:flex;gap:6px">
+        <button class="chip" id="viewCaseBtn" style="margin:0">${tr('assistant_view_case')}</button>
+        <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
+      </span>
     </div>
 
     <div class="card policy-card" id="howCard" hidden>
@@ -159,6 +162,10 @@ AS.renderAssistant = function (container, app) {
     chatCtx = {}
     pendingScan = ''
     drawLog()
+  }
+
+  container.querySelector('#viewCaseBtn').onclick = () => {
+    if (activeCase) app.go('case', { id: activeCase.id })
   }
 
   container.querySelector('#closeCaseBtn').onclick = async () => {

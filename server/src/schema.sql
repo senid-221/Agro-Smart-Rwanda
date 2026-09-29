@@ -130,6 +130,27 @@ CREATE TABLE IF NOT EXISTS crop_cases (
 -- general chat with no active case). Placed after crop_cases exists.
 ALTER TABLE ai_messages ADD COLUMN IF NOT EXISTS case_id INT REFERENCES crop_cases(id) ON DELETE SET NULL;
 
+-- Case Intelligence: emergency flag + latest computed recovery score (0-100).
+ALTER TABLE crop_cases ADD COLUMN IF NOT EXISTS emergency BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE crop_cases ADD COLUMN IF NOT EXISTS emergency_reason VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE crop_cases ADD COLUMN IF NOT EXISTS recovery_score INT;
+
+-- Smart Treatment Planner: scheduled actions for a case.
+CREATE TABLE IF NOT EXISTS case_tasks (
+  id           SERIAL PRIMARY KEY,
+  case_id      INT          NOT NULL REFERENCES crop_cases(id) ON DELETE CASCADE,
+  user_id      INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind         VARCHAR(16)  NOT NULL DEFAULT 'treatment'
+               CHECK (kind IN ('treatment','monitor','prevent','escalate')),
+  title        VARCHAR(200) NOT NULL DEFAULT '',
+  detail       TEXT         NOT NULL DEFAULT '',
+  task_date    DATE,
+  status       VARCHAR(12)  NOT NULL DEFAULT 'pending'
+               CHECK (status IN ('pending','done','skipped')),
+  created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
 -- Every report, photo finding, treatment, follow-up or outcome on a case.
 CREATE TABLE IF NOT EXISTS case_observations (
   id            SERIAL PRIMARY KEY,
@@ -186,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_pwreset_phone ON password_resets (phone, created_
 CREATE INDEX IF NOT EXISTS idx_ai_messages_user ON ai_messages (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cases_user ON crop_cases (user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_obs_case ON case_observations (case_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_case ON case_tasks (case_id, task_date ASC, id ASC);
 CREATE INDEX IF NOT EXISTS idx_research_user ON research_records (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_products_crop ON ai_products (target_crop);
 
