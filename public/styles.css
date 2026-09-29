@@ -332,6 +332,10 @@ body {
   cursor: pointer; text-align: center;
 }
 .link-btn:active { opacity: 0.7; }
+.auth-or { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; color: var(--text-soft); font-size: 12px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.google-wrap { display: flex; justify-content: center; }
+.google-wrap > div { min-height: 44px; }
 .otp-box {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-bottom: 12px; padding: 12px 14px; border-radius: 12px;

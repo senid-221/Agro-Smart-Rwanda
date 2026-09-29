@@ -10,6 +10,24 @@ const router = express.Router()
 
 const clean = s => String(s == null ? '' : s).trim()
 const normPhone = s => clean(s).replace(/[\s-]/g, '')
+const normEmail = s => clean(s).toLowerCase()
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Google Identity Services verification client (lazy: the server still boots and
+// email auth still works if google-auth-library is not installed yet).
+let _googleClient = null
+function getGoogleClient() {
+  if (!_googleClient) {
+    const { OAuth2Client } = require('google-auth-library')
+    _googleClient = new OAuth2Client()
+  }
+  return _googleClient
+}
+
+async function findByEmail(email) {
+  const rows = await query('SELECT * FROM users WHERE email = $1 LIMIT 1', [email])
+  return rows[0] || null
+}
 
 async function findByNationalId(nationalId) {
   const rows = await query('SELECT * FROM users WHERE national_id = $1 LIMIT 1', [nationalId])
@@ -25,49 +43,136 @@ async function findByPhone(phone) {
   return rows[0] || null
 }
 
-// POST /api/auth/signup
+// POST /api/auth/signup  — email + password (phone optional, enables OTP reset).
 router.post('/signup', async (req, res) => {
-  const nationalId = clean(req.body.nationalId || req.body.id)
-  const phone = normPhone(req.body.phone)
+  const email = normEmail(req.body.email)
   const password = String(req.body.password || '')
   const name = clean(req.body.name)
+  const phone = normPhone(req.body.phone)
 
-  if (!nationalId) return res.status(400).json({ error: 'no_id' })
-  if (!/^(\+?250|0)7\d{8}$/.test(phone)) return res.status(400).json({ error: 'bad_phone' })
-  if (password.length < 4) return res.status(400).json({ error: 'weak_password' })
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'bad_email' })
+  if (password.length < 6) return res.status(400).json({ error: 'weak_password' })
+  if (phone && !/^(\+?250|0)7\d{8}$/.test(phone)) return res.status(400).json({ error: 'bad_phone' })
 
-  const existing = await findByNationalId(nationalId)
+  const existing = await findByEmail(email)
   if (existing) return res.status(409).json({ error: 'exists' })
 
   const hash = await bcrypt.hash(password, 10)
   const inserted = await query(
-    `INSERT INTO users (national_id, phone, password_hash, name, role)
-     VALUES ($1, $2, $3, $4, 'user') RETURNING *`,
-    [nationalId, phone, hash, name]
+    `INSERT INTO users (email, password_hash, name, phone, auth_provider, role)
+     VALUES ($1, $2, $3, $4, 'password', 'user') RETURNING *`,
+    [email, hash, name, phone || null]
   )
   const row = inserted[0]
-  const user = publicUser(row)
-  res.json({ token: sign({ id: row.id, role: row.role }), user })
+  res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
 })
 
-// POST /api/auth/login  (also used by the admin tab; admin:true requires role)
+// POST /api/auth/login  — email + password (primary). Legacy national ID + phone
+// is still accepted so older/seeded accounts are not locked out. admin:true
+// additionally requires the admin role.
 router.post('/login', async (req, res) => {
+  const wantAdmin = !!req.body.admin
+  const password = String(req.body.password || req.body.pin || '')
+  const email = normEmail(req.body.email)
+
+  if (email) {
+    const row = await findByEmail(email)
+    if (!row) return res.status(404).json({ error: 'notfound' })
+    // A Google-only account has no password — it must sign in with Google.
+    if (!row.password_hash) return res.status(400).json({ error: 'google_only' })
+    const ok = await bcrypt.compare(password, row.password_hash)
+    if (!ok) return res.status(401).json({ error: wantAdmin ? 'badpin' : 'badpass' })
+    if (wantAdmin && row.role !== 'admin') return res.status(403).json({ error: 'badpin' })
+    return res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
+  }
+
   const nationalId = clean(req.body.nationalId || req.body.id)
   const phone = normPhone(req.body.phone)
-  const password = String(req.body.password || req.body.pin || '')
-  const wantAdmin = !!req.body.admin
-
   if (!nationalId || !phone) return res.status(400).json({ error: 'missing' })
 
   const row = await findByNationalId(nationalId)
   if (!row || row.phone !== phone) return res.status(404).json({ error: 'notfound' })
+  if (!row.password_hash) return res.status(401).json({ error: wantAdmin ? 'badpin' : 'badpass' })
 
   const ok = await bcrypt.compare(password, row.password_hash)
   if (!ok) return res.status(401).json({ error: wantAdmin ? 'badpin' : 'badpass' })
   if (wantAdmin && row.role !== 'admin') return res.status(403).json({ error: 'badpin' })
 
-  const user = publicUser(row)
-  res.json({ token: sign({ id: row.id, role: row.role }), user })
+  res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
+})
+
+// GET /api/auth/config — public bootstrap info for the login screen.
+// The Google client ID is a public value (it ships to the browser anyway); the
+// app hides the Google button when it is blank.
+router.get('/config', (_req, res) => {
+  res.json({ googleClientId: config.google.clientId || '' })
+})
+
+// POST /api/auth/google  { idToken } — "Sign in with Google".
+// Verifies the Google ID token, then finds/links/creates the user and issues the
+// same JWT the rest of the app uses. Never trusts the client for identity.
+router.post('/google', async (req, res) => {
+  const idToken = String(req.body.idToken || req.body.credential || '')
+  if (!idToken) return res.status(400).json({ error: 'missing' })
+  if (!config.google.clientId) return res.status(503).json({ error: 'google_unconfigured' })
+
+  let payload
+  try {
+    const ticket = await getGoogleClient().verifyIdToken({
+      idToken, audience: config.google.clientId
+    })
+    payload = ticket.getPayload()
+  } catch (err) {
+    if (err && err.code === 'MODULE_NOT_FOUND') {
+      return res.status(503).json({ error: 'google_unavailable' })
+    }
+    return res.status(401).json({ error: 'google_invalid' })
+  }
+  if (!payload || payload.email_verified === false) {
+    return res.status(401).json({ error: 'google_invalid' })
+  }
+
+  const googleId = String(payload.sub || '')
+  const email = normEmail(payload.email || '')
+  if (!googleId || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'google_no_email' })
+  const name = clean(payload.name || '')
+  const avatar = String(payload.picture || '')
+
+  try {
+    // 1) existing Google identity
+    let rows = await query('SELECT * FROM users WHERE google_id = $1 LIMIT 1', [googleId])
+    let row = rows[0]
+
+    // 2) existing account with this (verified) email → link Google to it
+    if (!row) {
+      rows = await query('SELECT * FROM users WHERE email = $1 LIMIT 1', [email])
+      if (rows[0]) {
+        const linked = await query(
+          `UPDATE users
+           SET google_id = $2,
+               avatar = CASE WHEN avatar = '' THEN $3 ELSE avatar END,
+               name   = CASE WHEN name   = '' THEN $4 ELSE name   END
+           WHERE id = $1 RETURNING *`,
+          [rows[0].id, googleId, avatar, name]
+        )
+        row = linked[0]
+      }
+    }
+
+    // 3) brand-new Google user
+    if (!row) {
+      const inserted = await query(
+        `INSERT INTO users (email, google_id, name, avatar, auth_provider, role)
+         VALUES ($1, $2, $3, $4, 'google', 'user') RETURNING *`,
+        [email, googleId, name, avatar]
+      )
+      row = inserted[0]
+    }
+
+    res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
+  } catch (err) {
+    res.status(500).json({ error: 'google_failed', message: err.message })
+  }
 })
 
 // GET /api/auth/me

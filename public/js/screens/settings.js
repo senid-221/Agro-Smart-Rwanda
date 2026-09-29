@@ -2,9 +2,53 @@
 const { makeT } = AS
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
 
+// ---- Google Identity Services ("Sign in with Google") ----
+// The client ID is fetched once from the backend (/auth/config). When it is blank
+// the Google button is simply not rendered (email + password only).
+let gsiClientId = null   // null = not fetched yet; '' = not configured
+let gsiScript = null
+function loadGsiScript() {
+  if (window.google && window.google.accounts && window.google.accounts.id) return Promise.resolve()
+  if (gsiScript) return gsiScript
+  gsiScript = new Promise(resolve => {
+    const s = document.createElement('script')
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.async = true; s.defer = true
+    s.onload = () => resolve()
+    s.onerror = () => resolve()
+    document.head.appendChild(s)
+  })
+  return gsiScript
+}
+async function mountGoogle(container, app, tt) {
+  if (gsiClientId === null) {
+    try { const cfg = await app.authConfig(); gsiClientId = (cfg && cfg.googleClientId) || '' }
+    catch (e) { gsiClientId = '' }
+  }
+  if (!gsiClientId) return
+  const el = container.querySelector('#googleBtn')
+  if (!el) return
+  await loadGsiScript()
+  const g = window.google && window.google.accounts && window.google.accounts.id
+  if (!g || !g.renderButton) return
+  g.initialize({
+    client_id: gsiClientId,
+    callback: async response => {
+      if (!response || !response.credential) return
+      const problem = await app.loginGoogle(response.credential).catch(() => 'network')
+      if (problem) {
+        const err = container.querySelector('#loginErr')
+        if (err) err.textContent = tt('auth_err_google')
+      }
+    }
+  })
+  el.innerHTML = ''
+  g.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 300 })
+}
+
 AS.renderLogin = function (container, app) {
   let mode = 'login'
-  const draft = { id: '', phone: '', pin: '' }
+  const draft = { email: '', pass: '', name: '', phone: '' }
   // Forgot-password flow state
   let resetStep = 1          // 1 = phone, 2 = OTP, 3 = new password
   let resetPhone = ''
@@ -34,33 +78,36 @@ AS.renderLogin = function (container, app) {
           <button class="auth-tab ${admin ? 'active' : ''}" id="tabAdmin">${tt('auth_tab_admin')}</button>
         </div>
         <div class="auth-card">
+          ${signup ? `<div class="field">
+            <img class="f-ico" src="img/user.png" alt="">
+            <input id="loginName" autocomplete="name" placeholder="${tt('login_name')}" value="${esc(draft.name)}" />
+          </div>` : ''}
           <div class="field">
             <img class="f-ico" src="img/id-card.png" alt="">
-            <input id="loginId" autocomplete="username" placeholder="${tt('login_id')}" value="${esc(draft.id)}" />
+            <input id="loginEmail" type="email" inputmode="email" autocomplete="username" placeholder="${tt('login_email')}" value="${esc(draft.email)}" />
           </div>
           <div class="field">
-            <img class="f-ico" src="img/phone.png" alt="">
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${tt('login_phone')}" value="${esc(draft.phone)}" />
+            <img class="f-ico" src="img/settings.png" alt="">
+            <input id="loginPass" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" placeholder="${tt('login_password')}" value="${esc(draft.pass)}" />
           </div>
-          ${admin ? `<div class="field">
-            <img class="f-ico" src="img/settings.png" alt="">
-            <input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="${tt('login_pin')}" value="${esc(draft.pin)}" />
-          </div>` : `<div class="field">
-            <img class="f-ico" src="img/settings.png" alt="">
-            <input id="loginPin" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" placeholder="${tt('login_password')}" value="${esc(draft.pin)}" />
-          </div>`}
+          ${signup ? `<div class="field">
+            <img class="f-ico" src="img/phone.png" alt="">
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${tt('login_phone_opt')}" value="${esc(draft.phone)}" />
+          </div>` : ''}
           <div class="err" id="loginErr"></div>
           <button class="btn btn-primary" id="loginBtn">${tt(btnKey)} →</button>
           ${admin ? '' : `<button class="link-btn" id="forgotBtn">${tt('login_forgot')}</button>`}
+          ${admin ? '' : `<div class="auth-or"><span>${tt('auth_or')}</span></div>
+          <div class="google-wrap"><div id="googleBtn"></div></div>`}
           <p class="auth-hint">${tt(hintKey)}</p>
         </div>
       </div>`
 
     const readDraft = () => {
-      draft.id = container.querySelector('#loginId').value
-      draft.phone = container.querySelector('#loginPhone').value
-      const pinEl = container.querySelector('#loginPin')
-      if (pinEl) draft.pin = pinEl.value
+      const em = container.querySelector('#loginEmail'); if (em) draft.email = em.value
+      const pw = container.querySelector('#loginPass'); if (pw) draft.pass = pw.value
+      const nm = container.querySelector('#loginName'); if (nm) draft.name = nm.value
+      const ph = container.querySelector('#loginPhone'); if (ph) draft.phone = ph.value
     }
     const setMode = m => { if (mode !== m) { readDraft(); mode = m; draw() } }
     container.querySelector('#langCorner').onclick = () => { readDraft(); app.setLang(lg === 'rw' ? 'en' : 'rw') }
@@ -69,29 +116,39 @@ AS.renderLogin = function (container, app) {
     container.querySelector('#tabAdmin').onclick = () => setMode('admin')
     const forgot = container.querySelector('#forgotBtn')
     if (forgot) forgot.onclick = () => { readDraft(); resetPhone = draft.phone; resetStep = 1; mode = 'reset'; draw() }
+
+    // Render the "Sign in with Google" button (login + signup only, not admin).
+    if (!admin) mountGoogle(container, app, tt)
+
     container.querySelector('#loginBtn').onclick = async () => {
       const btn = container.querySelector('#loginBtn')
-      const id = container.querySelector('#loginId').value.trim()
-      const phone = container.querySelector('#loginPhone').value.replace(/[\s-]/g, '')
-      const pass = container.querySelector('#loginPin').value
+      const email = container.querySelector('#loginEmail').value.trim()
+      const pass = container.querySelector('#loginPass').value
       const err = container.querySelector('#loginErr')
       err.textContent = ''
-      if (!id) { err.textContent = tt('login_err_id'); return }
-      if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
-      if (!pass) { err.textContent = admin ? tt('login_err_pin') : tt('login_err_pass'); return }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = tt('login_err_email'); return }
+      if (!pass) { err.textContent = tt('login_err_pass'); return }
+      if (signup && pass.length < 6) { err.textContent = tt('auth_err_weak'); return }
       btn.disabled = true
       let problem
       try {
-        if (admin) problem = await app.loginAdmin(id, phone, pass)
-        else if (signup) problem = await app.signup(id, phone, pass)
-        else problem = await app.login(id, phone, pass)
+        if (admin) {
+          problem = await app.loginAdmin(email, pass)
+        } else if (signup) {
+          const name = container.querySelector('#loginName').value.trim()
+          const phone = (container.querySelector('#loginPhone').value || '').replace(/[\s-]/g, '')
+          problem = await app.signup(email, pass, name, phone)
+        } else {
+          problem = await app.login(email, pass)
+        }
       } catch (e) { problem = 'network' }
       btn.disabled = false
       if (!problem) return
       const map = {
         notfound: 'auth_err_notfound', exists: 'auth_err_exists',
         badpin: 'auth_err_badpin', badpass: 'auth_err_badpass',
-        weak: 'auth_err_weak', network: 'auth_err_network'
+        weak: 'auth_err_weak', bad_email: 'login_err_email', bad_phone: 'login_err_phone',
+        google_only: 'auth_err_google_only', network: 'auth_err_network'
       }
       err.textContent = tt(map[problem] || 'auth_err_generic')
     }
@@ -253,7 +310,7 @@ AS.renderSettings = function (container, app) {
     <div class="setting-row">
       <div>
         <div class="label"><img class="ico" src="img/id-card.png" alt=""> ${tr('settings_account')}</div>
-        <div class="desc">${esc(app.user.id)} · ${esc(app.user.phone)}${isAdmin ? ' · ' + tr('admin_role') : ''}</div>
+        <div class="desc">${esc([app.user.email || app.user.id, app.user.phone].filter(Boolean).join(' · '))}${isAdmin ? ' · ' + tr('admin_role') : ''}</div>
       </div>
     </div>
 

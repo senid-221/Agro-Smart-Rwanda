@@ -76,26 +76,44 @@ const app = {
     render()
     return null
   },
-  async login(id, phone, password) {
-    const r = await AS.api.post('/auth/login', { nationalId: id, phone, password })
+  // Email + password login. Returns null on success or an error key string.
+  async login(email, password) {
+    const r = await AS.api.post('/auth/login', { email, password })
     if (r.error === 'notfound') return 'notfound'
     if (r.error === 'badpass') return 'badpass'
+    if (r.error === 'google_only') return 'google_only'
     if (r.error) return r.error
     return app._session(r)
   },
-  async loginAdmin(id, phone, password) {
-    const r = await AS.api.post('/auth/login', { nationalId: id, phone, password, admin: true })
+  // Admin tab: email + password, requires the admin role.
+  async loginAdmin(email, password) {
+    const r = await AS.api.post('/auth/login', { email, password, admin: true })
     if (r.error === 'badpin') return 'badpin'
     if (r.error === 'notfound') return 'notfound'
     if (r.error) return r.error
     return app._session(r)
   },
-  async signup(id, phone, password, name) {
-    const r = await AS.api.post('/auth/signup', { nationalId: id, phone, password, name: name || '' })
+  // Email + password registration (phone optional; enables OTP reset).
+  async signup(email, password, name, phone) {
+    const r = await AS.api.post('/auth/signup', { email, password, name: name || '', phone: phone || '' })
     if (r.error === 'exists') return 'exists'
     if (r.error === 'weak_password') return 'weak'
+    if (r.error === 'bad_email') return 'bad_email'
+    if (r.error === 'bad_phone') return 'bad_phone'
     if (r.error) return r.error
     return app._session(r)
+  },
+  // "Sign in with Google": send the Google ID token; the server verifies it and
+  // returns our JWT. Returns null on success or an error key string.
+  async loginGoogle(idToken) {
+    const r = await AS.api.post('/auth/google', { idToken })
+    if (r.error) return r.error
+    return app._session(r)
+  },
+  // Public bootstrap config for the login screen (e.g. the Google client ID).
+  async authConfig() {
+    const r = await AS.api.get('/auth/config')
+    return (r && !r.error) ? r : {}
   },
   // Forgot-password flow. forgotPassword returns { code } on success or { error }.
   async forgotPassword(phone) {

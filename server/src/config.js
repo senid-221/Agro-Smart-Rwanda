@@ -10,6 +10,9 @@ module.exports = {
   staticDir: path.resolve(root, process.env.STATIC_DIR || '../public'),
   corsOrigin: process.env.CORS_ORIGIN || '',
   db: {
+    // Neon (serverless Postgres) supplies a single pooled connection string.
+    // When DATABASE_URL is set it wins over the discrete DB_* values below.
+    url: process.env.DATABASE_URL || '',
     host: process.env.DB_HOST || '127.0.0.1',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     user: process.env.DB_USER || 'agrosmart',
@@ -22,8 +25,14 @@ module.exports = {
     secret: process.env.JWT_SECRET || 'insecure-dev-secret',
     expires: process.env.JWT_EXPIRES || '7d'
   },
+  // Google Identity Services. The client ID is public (it ships to the browser);
+  // the backend uses it as the expected `aud` when verifying a Google ID token.
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || ''
+  },
   // Used only by `npm run create-admin`; no insecure demo defaults.
   seedAdmin: {
+    email: process.env.ADMIN_EMAIL || '',
     nationalId: process.env.ADMIN_NATIONAL_ID || '',
     phone: process.env.ADMIN_PHONE || '',
     password: process.env.ADMIN_PASSWORD || '',

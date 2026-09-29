@@ -3,9 +3,9 @@
 This is the **real** production stack:
 
 - **Node.js / Express** backend (`server/`) — serves the API *and* the static frontend.
-- **PostgreSQL** database — users, products, categories, cart, orders, theme, AI training, scans.
+- **Neon (serverless PostgreSQL)** database — users, products, categories, cart, orders, theme, AI training, scans, crop cases. Connect with a single `DATABASE_URL` (TLS on).
 - **OpenAI (GPT)** — the API key lives **only** on the server (`.env`), proxied through `POST /api/ai/chat`. It is never shipped to the browser.
-- **JWT auth** — real registration/login with bcrypt-hashed passwords and an `admin` role.
+- **Auth** — email + password (bcrypt) **or** "Sign in with Google" (Google Identity Services). The server verifies the Google ID token and issues the same JWT. Roles: `user` / `admin`.
 - **pm2** keeps the app running; **nginx** terminates TLS and reverse-proxies to Node.
 
 The app is **online-only**: data, AI and admin all require internet. The service worker only caches the app shell for fast loads and never caches `/api/`.
@@ -16,6 +16,8 @@ The app is **online-only**: data, AI and admin all require internet. The service
 
 - A Hostinger **VPS** (KVM 1 or higher) with **Ubuntu 22.04**.
 - A **domain** pointed at the VPS IP (an `A` record for `yourdomain.com` and `www`).
+- A **Neon** project (neon.tech) — copy its **pooled connection string** (`DATABASE_URL`).
+- A **Google OAuth client ID** (Google Cloud Console → APIs & Services → Credentials → *Create credentials → OAuth client ID → Web application*). Add `https://yourdomain.com` to **Authorized JavaScript origins**.
 - An **OpenAI API key** (platform.openai.com → API keys).
 
 In the Hostinger panel: create the VPS, note its **IP**, **root password**, and set the OS to Ubuntu 22.04. In **DNS / Nameservers**, add an `A` record for your domain → the VPS IP.
@@ -34,10 +36,6 @@ apt update && apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt install -y nodejs
 
-# PostgreSQL server
-apt install -y postgresql postgresql-contrib
-systemctl enable --now postgresql
-
 # nginx, git, build tools, certbot
 apt install -y nginx git build-essential certbot python3-certbot-nginx
 
@@ -45,23 +43,23 @@ apt install -y nginx git build-essential certbot python3-certbot-nginx
 npm install -g pm2
 ```
 
-Verify: `node -v` (v20.x), `psql --version`, `nginx -v`, `pm2 -v`.
+Verify: `node -v` (v20.x), `nginx -v`, `pm2 -v`.
+
+> No local PostgreSQL is required — the app connects to **Neon** over TLS. (You can
+> still run a local Postgres for development by leaving `DATABASE_URL` blank and
+> setting the discrete `DB_*` values.)
 
 ---
 
-## 2. Create the database and user
+## 2. Prepare the Neon database
 
-```bash
-sudo -u postgres psql
-```
-```sql
-CREATE DATABASE agrosmart ENCODING 'UTF8';
-CREATE USER agrosmart WITH PASSWORD 'STRONG_DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE agrosmart TO agrosmart;
-\c agrosmart
-GRANT ALL ON SCHEMA public TO agrosmart;
-\q
-```
+1. In the Neon console, create a project (or branch) and note the **pooled**
+   connection string, e.g.
+   `postgres://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/DBNAME?sslmode=require`.
+2. You do **not** need to create tables by hand — `npm run migrate` (step 4) runs
+   `schema.sql` against Neon and is safe to re-run.
+
+> Keep the connection string secret; it goes in `server/.env` only (never committed).
 
 ---
 
@@ -84,14 +82,15 @@ PORT=8080
 NODE_ENV=production
 STATIC_DIR=../public
 
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_USER=agrosmart
-DB_PASSWORD=STRONG_DB_PASSWORD      # same as step 2
-DB_NAME=agrosmart
+# Neon (serverless Postgres) pooled connection string — TLS is enabled automatically.
+DATABASE_URL=postgres://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/DBNAME?sslmode=require
 
 JWT_SECRET=<paste output of: openssl rand -hex 32>
 JWT_EXPIRES=7d
+
+# Google "Sign in with Google" (Web application OAuth client). Public value.
+# Leave blank to hide the Google button and run email+password only.
+GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
 
 OPENAI_API_KEY=sk-...               # server-side only, never in the app
 OPENAI_MODEL=gpt-4o-mini
@@ -105,11 +104,13 @@ RESEARCH_MAX_RESULTS=5
 
 Generate the JWT secret: `openssl rand -hex 32`.
 
-> `.env` is git-ignored — it is never committed. The OpenAI key stays here.
-> No admin credentials live in `.env`; the admin is created explicitly in step 4.
+> `.env` is git-ignored — it is never committed. The OpenAI key and `DATABASE_URL` stay here.
+> `GOOGLE_CLIENT_ID` is a **public** value (it ships to the browser); it is read from `.env`
+> so there is a single source of truth. No admin credentials live in `.env`; the admin is
+> created explicitly in step 4.
 > **Forgot-password:** the reset code is generated server-side and shown in the app
-> (no SMS provider needed). Tune the OTP policy with the `OTP_*` / `RESET_TOKEN_TTL_SEC`
-> values if you wish.
+> (no SMS provider needed). It is phone-based, so it applies to accounts that have a phone
+> on file. Tune the OTP policy with the `OTP_*` / `RESET_TOKEN_TTL_SEC` values if you wish.
 > **Crop AI Doctor:** `OPENAI_VISION_MODEL` powers photo analysis; set `TAVILY_API_KEY`
 > to enable ranked, cited live research (RAB/FAO/CABI/universities first). Without it the
 > Doctor still answers from the grounded offline knowledge base — it never invents sources.
@@ -119,12 +120,12 @@ Generate the JWT secret: `openssl rand -hex 32`.
 ## 4. Create tables, seed data and the admin account
 
 ```bash
-npm run migrate     # creates all tables, indexes, functions and triggers from schema.sql
+npm run migrate     # creates all tables, indexes, functions and triggers from schema.sql (on Neon)
 npm run seed        # seeds catalog + theme + provider ONLY (never creates a user)
 
-# Create the real administrator (national ID, phone, password, optional name):
-npm run create-admin -- <nationalId> <phone> <strongPassword> "<full name>"
-# e.g.  npm run create-admin -- 1200012345678901 0788123456 MyStr0ngPass! "Jane Admin"
+# Create the real administrator (email, password, optional name):
+npm run create-admin -- <email> <strongPassword> "<full name>"
+# e.g.  npm run create-admin -- admin@yourdomain.com MyStr0ngPass! "Jane Admin"
 ```
 
 `npm run seed` is safe to re-run: catalog rows use `ON CONFLICT DO NOTHING`, so it
@@ -178,8 +179,13 @@ Your app is now live at `https://yourdomain.com`.
 ## 7. First login
 
 1. Open `https://yourdomain.com`.
-2. **Admin tab** → the national ID, phone and password you passed to `npm run create-admin` in step 4.
-3. **Sign up** to create a normal farmer account, or share the link with farmers.
+2. **Admin tab** → the email and password you passed to `npm run create-admin` in step 4.
+3. **Sign up** with email + password, or tap **Sign in with Google**, to create a farmer account.
+
+> For the Google button to appear, `GOOGLE_CLIENT_ID` must be set in `.env` **and**
+> `https://yourdomain.com` must be listed in the OAuth client's **Authorized JavaScript
+> origins** in Google Cloud Console. Google users are matched to an account by their
+> Google ID / email; signing in with Google also creates the account on first use.
 
 To turn on real GPT answers, the provider is seeded as `remote` when `OPENAI_API_KEY` is set. In the Admin → AI provider panel you can switch between **remote (OpenAI)** and **builtin (on-device rules)**.
 
@@ -203,11 +209,13 @@ Frontend files are served straight from `public/`; a `git pull` + hard refresh i
 ## Backups
 
 ```bash
-pg_dump -U agrosmart -h 127.0.0.1 agrosmart > ~/agrosmart-$(date +%F).sql
+# Neon: dump over the pooled connection string (from server/.env)
+pg_dump "$DATABASE_URL" > ~/agrosmart-$(date +%F).sql
 ```
-Schedule with cron and copy off-server. Restore with:
+Neon also keeps automatic history/branches — you can restore a point in time from the
+console. To restore a manual dump:
 ```bash
-psql -U agrosmart -h 127.0.0.1 agrosmart < ~/agrosmart-YYYY-MM-DD.sql
+psql "$DATABASE_URL" < ~/agrosmart-YYYY-MM-DD.sql
 ```
 
 ---
@@ -215,9 +223,10 @@ psql -U agrosmart -h 127.0.0.1 agrosmart < ~/agrosmart-YYYY-MM-DD.sql
 ## Security checklist
 
 - [ ] `JWT_SECRET` is a long random string (not the default).
-- [ ] `DB_PASSWORD` is strong; the admin password passed to `create-admin` is strong.
+- [ ] `DATABASE_URL` (Neon) uses the **pooled** string with `sslmode=require`; it is only in `server/.env`.
+- [ ] The admin password passed to `create-admin` is strong.
+- [ ] `GOOGLE_CLIENT_ID` matches an OAuth **Web application** client whose Authorized JavaScript origins include your domain.
 - [ ] No demo accounts remain (`npm run remove-demo` if the DB was seeded by an older build).
 - [ ] `OPENAI_API_KEY` only ever in `server/.env` (never committed, never in `public/`).
 - [ ] HTTPS enforced by certbot; nginx is the only public port (Node stays on 127.0.0.1).
-- [ ] PostgreSQL bound to localhost (`listen_addresses` default) — not exposed to the internet.
 - [ ] `.env` and `node_modules/` are git-ignored.

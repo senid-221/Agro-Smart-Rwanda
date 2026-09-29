@@ -2,15 +2,35 @@
 -- Create the database with UTF8 encoding so Kinyarwanda text and emoji store correctly:
 --   CREATE DATABASE agrosmart ENCODING 'UTF8';
 
+-- Users authenticate with email + password, or "Sign in with Google".
+-- email / google_id are the primary identities; national_id / phone are optional
+-- profile fields (phone still powers the OTP reset). password_hash is null for
+-- Google-only accounts.
 CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
-  national_id   VARCHAR(32)  NOT NULL UNIQUE,
-  phone         VARCHAR(20)  NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  email         VARCHAR(255),
+  google_id     VARCHAR(64),
+  national_id   VARCHAR(32)  UNIQUE,
+  phone         VARCHAR(20),
+  password_hash VARCHAR(255),
   name          VARCHAR(120) NOT NULL DEFAULT '',
+  avatar        TEXT         NOT NULL DEFAULT '',
+  auth_provider VARCHAR(16)  NOT NULL DEFAULT 'password' CHECK (auth_provider IN ('password','google')),
   role          VARCHAR(10)  NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent migration for databases created before email/Google auth.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email         VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id     VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar        TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(16) NOT NULL DEFAULT 'password';
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE users ALTER COLUMN national_id   DROP NOT NULL;
+ALTER TABLE users ALTER COLUMN phone         DROP NOT NULL;
+-- Unique per-identity indexes (multiple NULLs allowed, so partial profiles are fine).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id);
 
 CREATE TABLE IF NOT EXISTS products (
   id      VARCHAR(64) PRIMARY KEY,

@@ -3,7 +3,13 @@ const fs = require('fs')
 const path = require('path')
 const config = require('./config')
 
-const pool = new Pool(Object.assign({ max: 10 }, config.db))
+// Neon (and other managed Postgres) require TLS and give a single connection
+// string. Prefer it; otherwise fall back to the discrete DB_* host/port config.
+const poolConfig = config.db.url
+  ? { connectionString: config.db.url, ssl: { rejectUnauthorized: false } }
+  : config.db
+
+const pool = new Pool(Object.assign({ max: 10 }, poolConfig))
 
 // pg throws on an idle-connection error; surface it instead of crashing.
 pool.on('error', err => console.error('Postgres pool error:', err.message))

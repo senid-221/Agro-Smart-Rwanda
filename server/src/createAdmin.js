@@ -1,47 +1,44 @@
 // Create or promote a real administrator. No demo/default credentials.
-// Usage:  npm run create-admin -- <nationalId> <phone> <password> [name]
+// Usage:  npm run create-admin -- <email> <password> [name]
 // Falls back to ADMIN_* environment variables when args are omitted.
 const bcrypt = require('bcryptjs')
 const { pool, migrate, query } = require('./db')
 const config = require('./config')
 
-const DEMO_IDS = ['1199080000000000']
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function main() {
-  const [nationalId, phone, password, name] = process.argv.slice(2)
-  const id = (nationalId || config.seedAdmin.nationalId || '').trim()
-  const ph = (phone || config.seedAdmin.phone || '').replace(/[\s-]/g, '')
+  const [email, password, name] = process.argv.slice(2)
+  const em = (email || config.seedAdmin.email || '').trim().toLowerCase()
   const pw = password || config.seedAdmin.password || ''
   const nm = (name || config.seedAdmin.name || 'Admin').trim()
 
-  if (!id || !ph || !pw) {
-    console.error('Usage: npm run create-admin -- <nationalId> <phone> <password> [name]')
-    console.error('   (or set ADMIN_NATIONAL_ID / ADMIN_PHONE / ADMIN_PASSWORD in .env)')
+  if (!em || !pw) {
+    console.error('Usage: npm run create-admin -- <email> <password> [name]')
+    console.error('   (or set ADMIN_EMAIL / ADMIN_PASSWORD in .env)')
     process.exit(1)
   }
-  if (!/^(\+?250|0)7\d{8}$/.test(ph)) {
-    console.error('✖ invalid phone — use a Rwandan mobile, e.g. 0788123456')
+  if (!EMAIL_RE.test(em)) {
+    console.error('✖ invalid email address')
     process.exit(1)
   }
   if (String(pw).length < 8) {
     console.error('✖ password too short — use at least 8 characters for an admin')
     process.exit(1)
   }
-  if (DEMO_IDS.includes(id)) {
-    console.error('✖ that national ID is the old demo account — choose a real one')
-    process.exit(1)
-  }
 
   await migrate()
   const hash = await bcrypt.hash(String(pw), 10)
   await query(
-    `INSERT INTO users (national_id, phone, password_hash, name, role)
-     VALUES ($1,$2,$3,$4,'admin')
-     ON CONFLICT (national_id) DO UPDATE SET
-       role='admin', phone=EXCLUDED.phone, name=EXCLUDED.name, password_hash=EXCLUDED.password_hash`,
-    [id, ph, hash, nm]
+    `INSERT INTO users (email, password_hash, name, role, auth_provider)
+     VALUES ($1, $2, $3, 'admin', 'password')
+     ON CONFLICT (email) DO UPDATE SET
+       role = 'admin',
+       name = COALESCE(NULLIF(EXCLUDED.name, ''), users.name),
+       password_hash = EXCLUDED.password_hash`,
+    [em, hash, nm]
   )
-  console.log(`✔ administrator ready — national ID ${id}, phone ${ph}`)
+  console.log(`✔ administrator ready — email ${em}`)
   await pool.end()
 }
 

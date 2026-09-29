@@ -36,9 +36,18 @@ function requireAdmin(req, res, next) {
   next()
 }
 
-// The client identifies users by national ID + phone; the JWT carries the row id.
+// The client shows users by email (falling back to national ID for legacy
+// accounts); the JWT carries the row id. Google accounts include their avatar.
 function publicUser(row) {
-  return { id: row.national_id, phone: row.phone, role: row.role, name: row.name }
+  return {
+    id: row.email || row.national_id || '',
+    email: row.email || '',
+    phone: row.phone || '',
+    role: row.role,
+    name: row.name || '',
+    avatar: row.avatar || '',
+    provider: row.auth_provider || 'password'
+  }
 }
 
 module.exports = { sign, attach, requireAuth, requireAdmin, publicUser }
