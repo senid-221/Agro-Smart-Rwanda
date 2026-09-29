@@ -4,21 +4,26 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 
 AS.renderLogin = function (container, app) {
   let mode = 'login'
-  const draft = { id: '', phone: '' }
+  const draft = { id: '', phone: '', pin: '' }
 
   const draw = () => {
     const lg = app.lang || 'rw'
     const tt = makeT(lg)
     const signup = mode === 'signup'
+    const admin = mode === 'admin'
+    const subKey = admin ? 'auth_admin_sub' : signup ? 'auth_signup_sub' : 'login_sub'
+    const btnKey = admin ? 'auth_admin_btn' : signup ? 'auth_signup_btn' : 'login_btn'
+    const hintKey = admin ? 'auth_hint_admin' : signup ? 'auth_hint_signup' : 'auth_hint_login'
     container.innerHTML = `
       <div class="login">
         <button class="corner-lang" id="langCorner">${lg === 'rw' ? 'EN' : 'RW'}</button>
         <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
         <h1>${tt('appName')}</h1>
-        <p class="tagline">${tt(signup ? 'auth_signup_sub' : 'login_sub')}</p>
+        <p class="tagline">${tt(subKey)}</p>
         <div class="auth-tabs">
-          <button class="auth-tab ${signup ? '' : 'active'}" id="tabLogin">${tt('auth_tab_login')}</button>
+          <button class="auth-tab ${mode === 'login' ? 'active' : ''}" id="tabLogin">${tt('auth_tab_login')}</button>
           <button class="auth-tab ${signup ? 'active' : ''}" id="tabSignup">${tt('auth_tab_signup')}</button>
+          <button class="auth-tab ${admin ? 'active' : ''}" id="tabAdmin">${tt('auth_tab_admin')}</button>
         </div>
         <div class="auth-card">
           <div class="field">
@@ -29,25 +34,40 @@ AS.renderLogin = function (container, app) {
             <img class="f-ico" src="img/phone.png" alt="">
             <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${tt('login_phone')}" value="${esc(draft.phone)}" />
           </div>
+          ${admin ? `<div class="field">
+            <img class="f-ico" src="img/settings.png" alt="">
+            <input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="${tt('login_pin')}" value="${esc(draft.pin)}" />
+          </div>` : ''}
           <div class="err" id="loginErr"></div>
-          <button class="btn btn-primary" id="loginBtn">${tt(signup ? 'auth_signup_btn' : 'login_btn')} →</button>
-          <p class="auth-hint">${tt(signup ? 'auth_hint_signup' : 'auth_hint_login')}</p>
+          <button class="btn btn-primary" id="loginBtn">${tt(btnKey)} →</button>
+          <p class="auth-hint">${tt(hintKey)}</p>
         </div>
       </div>`
 
     const readDraft = () => {
       draft.id = container.querySelector('#loginId').value
       draft.phone = container.querySelector('#loginPhone').value
+      const pinEl = container.querySelector('#loginPin')
+      if (pinEl) draft.pin = pinEl.value
     }
+    const setMode = m => { if (mode !== m) { readDraft(); mode = m; draw() } }
     container.querySelector('#langCorner').onclick = () => { readDraft(); app.setLang(lg === 'rw' ? 'en' : 'rw') }
-    container.querySelector('#tabLogin').onclick = () => { if (mode !== 'login') { readDraft(); mode = 'login'; draw() } }
-    container.querySelector('#tabSignup').onclick = () => { if (mode !== 'signup') { readDraft(); mode = 'signup'; draw() } }
+    container.querySelector('#tabLogin').onclick = () => setMode('login')
+    container.querySelector('#tabSignup').onclick = () => setMode('signup')
+    container.querySelector('#tabAdmin').onclick = () => setMode('admin')
     container.querySelector('#loginBtn').onclick = () => {
       const id = container.querySelector('#loginId').value.trim()
       const phone = container.querySelector('#loginPhone').value.replace(/[\s-]/g, '')
       const err = container.querySelector('#loginErr')
       if (!id) { err.textContent = tt('login_err_id'); return }
       if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
+      if (admin) {
+        const pin = container.querySelector('#loginPin').value.trim()
+        if (!pin) { err.textContent = tt('login_err_pin'); return }
+        const problem = app.loginAdmin(id, phone, pin)
+        if (problem === 'badpin') err.textContent = tt('auth_err_badpin')
+        return
+      }
       const problem = signup ? app.signup(id, phone) : app.login(id, phone)
       if (problem === 'notfound') err.textContent = tt('auth_err_notfound')
       if (problem === 'exists') err.textContent = tt('auth_err_exists')
@@ -96,6 +116,7 @@ AS.renderOnboarding = function (container, app) {
 
 AS.renderSettings = function (container, app) {
   const tr = app.t()
+  const isAdmin = app.user && app.user.role === 'admin'
 
   container.innerHTML = `
     <div class="section-title">${tr('settings_title')} <img class="ico" src="img/settings.png" alt=""></div>
@@ -103,9 +124,25 @@ AS.renderSettings = function (container, app) {
     <div class="setting-row">
       <div>
         <div class="label"><img class="ico" src="img/id-card.png" alt=""> ${tr('settings_account')}</div>
-        <div class="desc">${esc(app.user.id)} · ${esc(app.user.phone)}</div>
+        <div class="desc">${esc(app.user.id)} · ${esc(app.user.phone)}${isAdmin ? ' · ' + tr('admin_role') : ''}</div>
       </div>
     </div>
+
+    <div class="setting-row" id="dashRow" style="cursor:pointer">
+      <div>
+        <div class="label"><img class="ico" src="img/home.png" alt=""> ${tr('dash_title')}</div>
+        <div class="desc">${tr('dash_desc')}</div>
+      </div>
+      <span class="arrow">›</span>
+    </div>
+
+    ${isAdmin ? `<div class="setting-row" id="adminRow" style="cursor:pointer">
+      <div>
+        <div class="label"><img class="ico" src="img/settings.png" alt=""> ${tr('admin_title')}</div>
+        <div class="desc">${tr('admin_desc')}</div>
+      </div>
+      <span class="arrow">›</span>
+    </div>` : ''}
 
     <div class="setting-row">
       <div>
@@ -160,6 +197,8 @@ AS.renderSettings = function (container, app) {
 
   const nameInput = container.querySelector('#nameInput')
   nameInput.onchange = () => app.setName(nameInput.value.trim())
+  container.querySelector('#dashRow').onclick = () => app.go('dashboard')
+  if (isAdmin) container.querySelector('#adminRow').onclick = () => app.go('admin')
   container.querySelector('#installRow').onclick = async () => {
     const ev = window.__installEvent
     if (ev) {

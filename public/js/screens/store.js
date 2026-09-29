@@ -1,13 +1,15 @@
 (function () {
-const catEmoji = id => (AS.PRODUCT_CATEGORIES.find(c => c.id === id) || {}).emoji || '🧺'
+const catEmoji = id => ((AS.CATALOG ? AS.CATALOG.categories() : AS.PRODUCT_CATEGORIES).find(c => c.id === id) || {}).emoji || '🧺'
 
-// Real product photo when available (img/products/<id>.png); the emoji stays as
-// an automatic fallback for items whose photo has not been generated yet.
+// Product photo: an admin-uploaded image (p.img, path or dataURL) wins, then the
+// generated photo at img/products/<id>.png; the emoji stays as an automatic
+// fallback for items whose photo has not been generated yet.
 function prodThumb(p, small) {
   const emoji = p.emoji || catEmoji(p.cat)
+  const src = p.img || ('img/products/' + p.id + '.png')
   return `<span class="prod-thumb${small ? ' small' : ''}">` +
     `<span class="prod-emoji">${emoji}</span>` +
-    `<img src="img/products/${p.id}.png" alt="" loading="lazy" onerror="this.remove()">` +
+    `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` +
     `</span>`
 }
 

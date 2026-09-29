@@ -4,7 +4,7 @@ const {
   renderHome, renderScan, renderLearn, renderLessonDetail, renderCrops, renderCropDetail,
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
-  renderAssistant
+  renderAssistant, renderDashboard, renderAdmin
 } = AS
 
 const state = {
@@ -35,6 +35,8 @@ const ROUTES = {
   cart: { screen: 'store', render: c => renderCart(c, app) },
   orders: { screen: 'store', render: c => renderOrders(c, app) },
   assistant: { screen: 'assistant', render: c => renderAssistant(c, app) },
+  dashboard: { screen: 'dashboard', render: c => renderDashboard(c, app) },
+  admin: { screen: 'admin', render: c => renderAdmin(c, app) },
   settings: { screen: 'more', render: c => renderSettings(c, app) }
 }
 
@@ -66,7 +68,14 @@ const app = {
     const acc = state.accounts.find(a =>
       a.id.toLowerCase() === id.toLowerCase() && a.phone === phone)
     if (!acc) return 'notfound'
-    state.user = { id: acc.id, phone: acc.phone, at: Date.now() }
+    state.user = { id: acc.id, phone: acc.phone, role: 'user', at: Date.now() }
+    localStorage.setItem('as_user', JSON.stringify(state.user))
+    render()
+    return null
+  },
+  loginAdmin(id, phone, pin) {
+    if (!AS.ADMIN.check(id, phone, pin)) return 'badpin'
+    state.user = { id: String(id).trim(), phone: String(phone).trim(), role: 'admin', at: Date.now() }
     localStorage.setItem('as_user', JSON.stringify(state.user))
     render()
     return null
@@ -75,10 +84,13 @@ const app = {
     if (state.accounts.some(a => a.id.toLowerCase() === id.toLowerCase())) return 'exists'
     state.accounts.push({ id, phone, at: Date.now() })
     localStorage.setItem('as_accounts', JSON.stringify(state.accounts))
-    state.user = { id, phone, at: Date.now() }
+    state.user = { id, phone, role: 'user', at: Date.now() }
     localStorage.setItem('as_user', JSON.stringify(state.user))
     render()
     return null
+  },
+  applyTheme() {
+    if (AS.THEME && AS.THEME.apply) AS.THEME.apply(state.lang || 'rw', t())
   },
   setOnboarded() {
     state.onboarded = true
@@ -125,7 +137,11 @@ function shell() {
   el.innerHTML = ''
 
   const tr = t()
+  AS.THEME.apply(state.lang || 'rw', tr)
   const currentScreen = ROUTES[state.route.name]?.screen || 'home'
+  const appTitle = AS.THEME.title(state.lang || 'rw', tr)
+  const appSub = AS.THEME.subtitle(state.lang || 'rw', tr)
+  const logo = AS.THEME_LOGO || 'img/leaf.png'
 
   // header
   const header = document.createElement('header')
@@ -133,8 +149,8 @@ function shell() {
   header.innerHTML = `
     <div class="row">
       <div>
-        <h1><img class="h-ico" src="img/leaf.png" alt=""> ${tr('appName')}</h1>
-        <div class="sub">${tr('tagline')}</div>
+        <h1><img class="h-ico" src="${logo}" alt=""> ${appTitle}</h1>
+        <div class="sub">${appSub}</div>
       </div>
       <button class="lang-chip" id="langToggle">${state.lang === 'rw' ? 'EN' : 'RW'}</button>
     </div>`

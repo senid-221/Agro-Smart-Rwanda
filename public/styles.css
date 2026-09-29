@@ -23,7 +23,7 @@
 html, body { height: 100%; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--app-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
@@ -433,3 +433,49 @@ body {
 }
 
 .progress-note { font-size: 12px; color: var(--text-soft); }
+
+/* ---------- user dashboard ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
+.stat-card {
+  background: var(--card); border-radius: 14px; padding: 14px 8px; text-align: center;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+}
+.stat-n { font-size: 24px; font-weight: 800; color: var(--green-700); line-height: 1; }
+.stat-l { font-size: 11px; color: var(--text-soft); font-weight: 600; }
+
+/* ---------- admin ---------- */
+.admin-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.admin-head .section-title { flex: 1; }
+.btn.sm { padding: 8px 14px; font-size: 13px; }
+.row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.mini-btn {
+  background: var(--green-100); color: var(--green-900); border: none;
+  border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.mini-btn.danger { background: var(--red-100); color: var(--red); }
+.mini-btn:active { transform: scale(0.95); }
+
+.card.form { padding: 14px; margin: 12px 0; }
+.form-title { font-weight: 700; color: var(--green-900); margin-bottom: 10px; font-size: 14px; }
+.card.form label { display: block; font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 10px; }
+.card.form input, .card.form select, .card.form textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 9px 10px;
+  border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px;
+  font-family: inherit; color: var(--text); background: #fff;
+}
+.card.form input:focus, .card.form select:focus, .card.form textarea:focus {
+  outline: none; border-color: var(--green-500); box-shadow: 0 0 0 3px rgba(76,175,80,0.12);
+}
+.card.form input:disabled { background: var(--bg); color: var(--text-soft); }
+.card.form input[type="color"] { padding: 2px; height: 42px; }
+.card.form input[type="file"] { padding: 6px; font-size: 12px; }
+.card.form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.card.form .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.card.form .check input { width: auto; margin: 0; }
+.form-row { display: flex; gap: 8px; margin-top: 6px; }
+.img-prev { display: flex; gap: 8px; margin: 4px 0 8px; }
+.img-prev img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+.list-row .thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.qa-row .body .name { font-size: 13.5px; }
+.admin .tabs { margin-top: 0; }
+

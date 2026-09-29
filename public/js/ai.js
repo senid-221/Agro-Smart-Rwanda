@@ -295,3 +295,87 @@ AS.aiReply = function (text, lang, ctx) {
       : 'I am not sure about that one. Try: take a photo (Scan), browse "Diseases", or ask me about prices and fertilizers.'
   }
 }
+
+// ---------- admin-taught Kinyarwanda Q&A (highest priority, built-in mode) ----------
+AS.aiTrainedReply = function (text, lang, ctx) {
+  const qa = (AS.AIK && AS.AIK.qa()) || []
+  if (!qa.length) return null
+  const low = String(text).toLowerCase()
+  const toks = low.split(/[^a-z0-9']+/i).filter(w => w.length >= 3)
+  if (!toks.length) return null
+  let best = null, bestScore = 0
+  for (const x of qa) {
+    const q = (String(x.q || '') + ' ' + String(x.qEn || '')).toLowerCase()
+    const qt = q.split(/[^a-z0-9']+/i).filter(w => w.length >= 3)
+    if (!qt.length) continue
+    let score = 0
+    for (const w of toks) if (qt.includes(w)) score++
+    const ratio = score / qt.length
+    if (score > bestScore && (score >= 2 || ratio >= 0.6)) { bestScore = score; best = x }
+  }
+  if (!best) return null
+  const text2 = lang === 'en' ? (best.aEn || best.a || '') : (best.a || best.aEn || '')
+  if (!text2) return null
+  return { intent: 'trained', ctx: ctx || {}, text: text2 }
+}
+
+// system prompt for a remote provider, built from the 15 rules + admin training
+AS.aiSystemPrompt = function (lang) {
+  const rules = (AS.FARMER_RULES || [])
+    .map((r, i) => (i + 1) + '. ' + (lang === 'en' ? r.en : r.rw)).join('\n')
+  const gl = ((AS.AIK && AS.AIK.glossary()) || [])
+    .map(x => '- ' + (x.term || '') + ': ' + (lang === 'en' ? (x.defEn || x.def || '') : (x.def || x.defEn || '')))
+    .filter(s => s.length > 2).join('\n')
+  const qa = ((AS.AIK && AS.AIK.qa()) || [])
+    .map(x => 'Q: ' + (lang === 'en' ? (x.qEn || x.q || '') : (x.q || x.qEn || '')) +
+      '\nA: ' + (lang === 'en' ? (x.aEn || x.a || '') : (x.a || x.aEn || '')))
+    .filter(s => s.length > 6).join('\n\n')
+  return 'You are the AgroSmart Rwanda farming assistant for Rwandan farmers. ' +
+    'Reply in the farmer\'s language (' + (lang === 'en' ? 'English' : 'clear, simple Kinyarwanda' ) + ').\n\n' +
+    'RULES:\n' + rules +
+    (gl ? '\n\nGLOSSARY (use these clear Kinyarwanda terms):\n' + gl : '') +
+    (qa ? '\n\nADMIN-TRAINED Q&A (prefer these answers when relevant):\n' + qa : '')
+}
+
+// provider-aware dispatcher: custom Q&A -> remote provider -> built-in rules engine
+AS.aiChat = async function (message, lang, ctx) {
+  ctx = ctx && typeof ctx === 'object' ? ctx : {}
+  const prov = (AS.PROVIDER && AS.PROVIDER.get()) || { mode: 'builtin' }
+
+  const trained = AS.aiTrainedReply(message, lang, ctx)
+  if (trained) return trained
+
+  if (prov.mode === 'remote' && prov.apiUrl) {
+    try {
+      const sys = AS.aiSystemPrompt(lang)
+      const res = await fetch(prov.apiUrl, {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' },
+          prov.apiKey ? { 'Authorization': 'Bearer ' + prov.apiKey } : {}),
+        body: JSON.stringify({
+          model: prov.model || undefined,
+          message, lang, ctx, system: sys,
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: String(message) }]
+        })
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      const text = data.text || data.reply || data.response || data.message ||
+        (data.choices && data.choices[0] &&
+          (data.choices[0].text || (data.choices[0].message && data.choices[0].message.content))) || ''
+      if (String(text).trim()) return { intent: 'remote', ctx, text: String(text) }
+      throw new Error('empty reply')
+    } catch (e) {
+      if (prov.requireRemote) {
+        return {
+          intent: 'remote_error', ctx,
+          text: lang === 'en'
+            ? 'The AI service could not be reached (' + (e && e.message ? e.message : 'error') + '). Check your connection or the provider settings.'
+            : 'Serivisi ya AI ntabwo yabashije kuboneka (' + (e && e.message ? e.message : 'ikosa') + '). Reba interineti cyangwa igenamiterere rya AI.'
+        }
+      }
+    }
+  }
+
+  return AS.aiReply(message, lang, ctx)
+}
