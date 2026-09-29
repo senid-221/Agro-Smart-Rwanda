@@ -95,12 +95,20 @@ JWT_EXPIRES=7d
 
 OPENAI_API_KEY=sk-...               # server-side only, never in the app
 OPENAI_MODEL=gpt-4o-mini
+
+# Africa's Talking SMS — powers the "Forgot password" OTP reset
+AT_USERNAME=your_at_username
+AT_API_KEY=your_at_api_key
+AT_SENDER_ID=                        # optional registered short code / sender ID
 ```
 
 Generate the JWT secret: `openssl rand -hex 32`.
 
 > `.env` is git-ignored — it is never committed. The OpenAI key stays here.
 > No admin credentials live in `.env`; the admin is created explicitly in step 4.
+> **Forgot-password SMS:** create an app at https://account.africastalking.com, copy its
+> *username* and *API key* into `AT_USERNAME` / `AT_API_KEY`, and (for production) register
+> a sender ID for `AT_SENDER_ID`. Without these the reset flow returns "SMS unavailable".
 
 ---
 

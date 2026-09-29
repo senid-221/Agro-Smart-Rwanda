@@ -96,6 +96,32 @@ const app = {
     if (r.error) return r.error
     return app._session(r)
   },
+  // Forgot-password flow. Each returns null on success or an error code string.
+  async forgotPassword(phone) {
+    const r = await AS.api.post('/auth/forgot', { phone })
+    if (r.error === 'network') return 'network'
+    if (r.error === 'notfound') return 'notfound'
+    if (r.error === 'too_soon') return 'too_soon'
+    if (r.error === 'sms_unconfigured' || r.error === 'sms_failed') return 'sms'
+    if (r.error) return r.error
+    return null
+  },
+  async verifyOtp(phone, code) {
+    const r = await AS.api.post('/auth/verify-otp', { phone, code })
+    if (r.error === 'network') return { error: 'network' }
+    if (r.error === 'otp_wrong') return { error: 'otp_wrong' }
+    if (r.error === 'otp_expired') return { error: 'otp_expired' }
+    if (r.error) return { error: r.error }
+    return { token: r.token }
+  },
+  async resetPassword(token, password) {
+    const r = await AS.api.post('/auth/reset', { token, password })
+    if (r.error === 'network') return 'network'
+    if (r.error === 'weak_password') return 'six'
+    if (r.error === 'token_expired') return 'expired'
+    if (r.error) return r.error
+    return null
+  },
   applyTheme() {
     if (AS.THEME && AS.THEME.apply) AS.THEME.apply(state.lang || 'rw', t())
   },

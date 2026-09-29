@@ -5,10 +5,17 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 AS.renderLogin = function (container, app) {
   let mode = 'login'
   const draft = { id: '', phone: '', pin: '' }
+  // Forgot-password flow state
+  let resetStep = 1          // 1 = phone, 2 = OTP, 3 = new password
+  let resetPhone = ''
+  let resetToken = ''
 
   const draw = () => {
     const lg = app.lang || 'rw'
     const tt = makeT(lg)
+
+    if (mode === 'reset') { drawReset(tt, lg); return }
+
     const signup = mode === 'signup'
     const admin = mode === 'admin'
     const subKey = admin ? 'auth_admin_sub' : signup ? 'auth_signup_sub' : 'login_sub'
@@ -43,6 +50,7 @@ AS.renderLogin = function (container, app) {
           </div>`}
           <div class="err" id="loginErr"></div>
           <button class="btn btn-primary" id="loginBtn">${tt(btnKey)} →</button>
+          ${admin ? '' : `<button class="link-btn" id="forgotBtn">${tt('login_forgot')}</button>`}
           <p class="auth-hint">${tt(hintKey)}</p>
         </div>
       </div>`
@@ -58,6 +66,8 @@ AS.renderLogin = function (container, app) {
     container.querySelector('#tabLogin').onclick = () => setMode('login')
     container.querySelector('#tabSignup').onclick = () => setMode('signup')
     container.querySelector('#tabAdmin').onclick = () => setMode('admin')
+    const forgot = container.querySelector('#forgotBtn')
+    if (forgot) forgot.onclick = () => { readDraft(); resetPhone = draft.phone; resetStep = 1; mode = 'reset'; draw() }
     container.querySelector('#loginBtn').onclick = async () => {
       const btn = container.querySelector('#loginBtn')
       const id = container.querySelector('#loginId').value.trim()
@@ -83,6 +93,111 @@ AS.renderLogin = function (container, app) {
         weak: 'auth_err_weak', network: 'auth_err_network'
       }
       err.textContent = tt(map[problem] || 'auth_err_generic')
+    }
+  }
+
+  // Multi-step "Forgot password" card: phone → OTP → new 6-digit password.
+  const drawReset = (tt, lg) => {
+    container.innerHTML = `
+      <div class="login">
+        <button class="corner-lang" id="langCorner">${lg === 'rw' ? 'EN' : 'RW'}</button>
+        <img class="logo" src="icon.png" alt="AgroSmart Rwanda" />
+        <h1>${tt('reset_title')}</h1>
+        <p class="tagline">${tt(resetStep === 1 ? 'reset_phone_step' : resetStep === 2 ? 'reset_otp_step' : 'reset_new_step')}</p>
+        <div class="auth-card">
+          ${resetStep === 1 ? `
+            <div class="field">
+              <img class="f-ico" src="img/phone.png" alt="">
+              <input id="rsPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="${tt('login_phone')}" value="${esc(resetPhone)}" />
+            </div>` : ''}
+          ${resetStep === 2 ? `
+            <div class="field">
+              <img class="f-ico" src="img/settings.png" alt="">
+              <input id="rsOtp" type="tel" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${tt('reset_otp_label')}" />
+            </div>` : ''}
+          ${resetStep === 3 ? `
+            <div class="field">
+              <img class="f-ico" src="img/settings.png" alt="">
+              <input id="rsPass" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="${tt('reset_new_label')}" />
+            </div>
+            <div class="field">
+              <img class="f-ico" src="img/settings.png" alt="">
+              <input id="rsPass2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="${tt('reset_confirm_label')}" />
+            </div>` : ''}
+          <div class="err" id="rsErr"></div>
+          <button class="btn btn-primary" id="rsBtn">${tt(resetStep === 1 ? 'reset_send_otp' : resetStep === 2 ? 'reset_verify' : 'reset_submit')} →</button>
+          ${resetStep === 2 ? `<button class="link-btn" id="rsResend">${tt('reset_resend')}</button>` : ''}
+          <button class="link-btn" id="rsBack">${tt('reset_back')}</button>
+        </div>
+      </div>`
+
+    const err = container.querySelector('#rsErr')
+    const btn = container.querySelector('#rsBtn')
+    container.querySelector('#langCorner').onclick = () => {
+      if (resetStep === 1) resetPhone = container.querySelector('#rsPhone').value
+      draw()
+    }
+    container.querySelector('#rsBack').onclick = () => {
+      mode = 'login'; resetStep = 1; resetToken = ''; draft.phone = resetPhone; draft.pin = ''; draw()
+    }
+    const resend = container.querySelector('#rsResend')
+    if (resend) resend.onclick = () => sendOtp(true)
+
+    async function sendOtp(isResend) {
+      const phone = (container.querySelector('#rsPhone') ? container.querySelector('#rsPhone').value : resetPhone).replace(/[\s-]/g, '')
+      err.textContent = ''
+      if (!/^(\+?250|0)7\d{8}$/.test(phone)) { err.textContent = tt('login_err_phone'); return }
+      btn.disabled = true
+      const problem = await app.forgotPassword(phone).catch(() => 'network')
+      btn.disabled = false
+      if (problem === 'too_soon' && !isResend) { err.textContent = tt('reset_err_too_soon'); return }
+      if (problem) {
+        err.textContent = tt(problem === 'notfound' ? 'reset_err_notfound'
+          : problem === 'too_soon' ? 'reset_err_too_soon'
+          : problem === 'sms' ? 'reset_err_sms'
+          : problem === 'network' ? 'auth_err_network' : 'auth_err_generic')
+        return
+      }
+      resetPhone = phone; resetStep = 2; draw()
+    }
+
+    btn.onclick = async () => {
+      err.textContent = ''
+      if (resetStep === 1) { return sendOtp(false) }
+      if (resetStep === 2) {
+        const code = container.querySelector('#rsOtp').value.trim()
+        if (!/^\d{6}$/.test(code)) { err.textContent = tt('reset_err_otp_wrong'); return }
+        btn.disabled = true
+        const r = await app.verifyOtp(resetPhone, code).catch(() => ({ error: 'network' }))
+        btn.disabled = false
+        if (r.error) {
+          err.textContent = tt(r.error === 'otp_wrong' ? 'reset_err_otp_wrong'
+            : r.error === 'otp_expired' ? 'reset_err_otp_expired'
+            : r.error === 'network' ? 'auth_err_network' : 'auth_err_generic')
+          return
+        }
+        resetToken = r.token; resetStep = 3; draw()
+        return
+      }
+      // step 3 — set the new password
+      const p1 = container.querySelector('#rsPass').value
+      const p2 = container.querySelector('#rsPass2').value
+      if (!/^\d{6}$/.test(p1)) { err.textContent = tt('reset_err_six'); return }
+      if (p1 !== p2) { err.textContent = tt('reset_err_mismatch'); return }
+      btn.disabled = true
+      const problem = await app.resetPassword(resetToken, p1).catch(() => 'network')
+      btn.disabled = false
+      if (problem === 'expired') { err.textContent = tt('reset_err_otp_expired'); resetStep = 1; resetToken = ''; return }
+      if (problem) {
+        err.textContent = tt(problem === 'six' ? 'reset_err_six'
+          : problem === 'network' ? 'auth_err_network' : 'auth_err_generic')
+        return
+      }
+      // Success: return to login with a confirmation.
+      mode = 'login'; resetStep = 1; resetToken = ''; draft.phone = resetPhone; draft.pin = ''
+      draw()
+      const note = container.querySelector('#loginErr')
+      if (note) { note.className = 'err ok'; note.textContent = tt('reset_success') }
     }
   }
 
