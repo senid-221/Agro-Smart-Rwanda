@@ -3,7 +3,7 @@
 This is the **real** production stack:
 
 - **Node.js / Express** backend (`server/`) — serves the API *and* the static frontend.
-- **MySQL** database — users, products, categories, cart, orders, theme, AI training, scans.
+- **PostgreSQL** database — users, products, categories, cart, orders, theme, AI training, scans.
 - **OpenAI (GPT)** — the API key lives **only** on the server (`.env`), proxied through `POST /api/ai/chat`. It is never shipped to the browser.
 - **JWT auth** — real registration/login with bcrypt-hashed passwords and an `admin` role.
 - **pm2** keeps the app running; **nginx** terminates TLS and reverse-proxies to Node.
@@ -34,9 +34,9 @@ apt update && apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt install -y nodejs
 
-# MySQL server
-apt install -y mysql-server
-systemctl enable --now mysql
+# PostgreSQL server
+apt install -y postgresql postgresql-contrib
+systemctl enable --now postgresql
 
 # nginx, git, build tools, certbot
 apt install -y nginx git build-essential certbot python3-certbot-nginx
@@ -45,21 +45,22 @@ apt install -y nginx git build-essential certbot python3-certbot-nginx
 npm install -g pm2
 ```
 
-Verify: `node -v` (v20.x), `mysql --version`, `nginx -v`, `pm2 -v`.
+Verify: `node -v` (v20.x), `psql --version`, `nginx -v`, `pm2 -v`.
 
 ---
 
 ## 2. Create the database and user
 
 ```bash
-mysql -u root -p
+sudo -u postgres psql
 ```
 ```sql
-CREATE DATABASE agrosmart CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'agrosmart'@'localhost' IDENTIFIED BY 'STRONG_DB_PASSWORD';
-GRANT ALL PRIVILEGES ON agrosmart.* TO 'agrosmart'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
+CREATE DATABASE agrosmart ENCODING 'UTF8';
+CREATE USER agrosmart WITH PASSWORD 'STRONG_DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE agrosmart TO agrosmart;
+\c agrosmart
+GRANT ALL ON SCHEMA public TO agrosmart;
+\q
 ```
 
 ---
@@ -84,6 +85,7 @@ NODE_ENV=production
 STATIC_DIR=../public
 
 DB_HOST=127.0.0.1
+DB_PORT=5432
 DB_USER=agrosmart
 DB_PASSWORD=STRONG_DB_PASSWORD      # same as step 2
 DB_NAME=agrosmart
@@ -178,11 +180,11 @@ Frontend files are served straight from `public/`; a `git pull` + hard refresh i
 ## Backups
 
 ```bash
-mysqldump -u agrosmart -p agrosmart > ~/agrosmart-$(date +%F).sql
+pg_dump -U agrosmart -h 127.0.0.1 agrosmart > ~/agrosmart-$(date +%F).sql
 ```
 Schedule with cron and copy off-server. Restore with:
 ```bash
-mysql -u agrosmart -p agrosmart < ~/agrosmart-YYYY-MM-DD.sql
+psql -U agrosmart -h 127.0.0.1 agrosmart < ~/agrosmart-YYYY-MM-DD.sql
 ```
 
 ---
@@ -193,5 +195,5 @@ mysql -u agrosmart -p agrosmart < ~/agrosmart-YYYY-MM-DD.sql
 - [ ] `DB_PASSWORD` and `ADMIN_PASSWORD` are strong; default admin password changed after first login.
 - [ ] `OPENAI_API_KEY` only ever in `server/.env` (never committed, never in `public/`).
 - [ ] HTTPS enforced by certbot; nginx is the only public port (Node stays on 127.0.0.1).
-- [ ] MySQL bound to localhost (default) — not exposed to the internet.
+- [ ] PostgreSQL bound to localhost (`listen_addresses` default) — not exposed to the internet.
 - [ ] `.env` and `node_modules/` are git-ignored.

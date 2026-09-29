@@ -1,5 +1,5 @@
 // Loads the browser data files (which assign onto a global `AS`) into a plain
-// object using a VM sandbox, so the server can seed MySQL from the same source
+// object using a VM sandbox, so the server can seed PostgreSQL from the same source
 // of truth the frontend ships with. No frontend code is duplicated here.
 const fs = require('fs')
 const path = require('path')

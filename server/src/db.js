@@ -1,41 +1,30 @@
-const mysql = require('mysql2/promise')
+const { Pool } = require('pg')
 const fs = require('fs')
 const path = require('path')
 const config = require('./config')
 
-const pool = mysql.createPool({
-  host: config.db.host,
-  port: config.db.port,
-  user: config.db.user,
-  password: config.db.password,
-  database: config.db.database,
-  waitForConnections: true,
-  connectionLimit: 10,
-  charset: 'utf8mb4_unicode_ci',
-  namedPlaceholders: false
-})
+const pool = new Pool(Object.assign({ max: 10 }, config.db))
+
+// pg throws on an idle-connection error; surface it instead of crashing.
+pool.on('error', err => console.error('Postgres pool error:', err.message))
 
 async function migrate() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
-  const conn = await pool.getConnection()
-  try {
-    // schema.sql is a list of CREATE TABLE statements separated by ';'
-    const statements = sql
-      .split(/;\s*[\r\n]+/)
-      .map(s => s.trim())
-      .filter(s => s.length && !s.startsWith('--'))
-    for (const stmt of statements) {
-      await conn.query(stmt)
-    }
-  } finally {
-    conn.release()
+  // schema.sql is a list of statements separated by ';' at end of line.
+  const statements = sql
+    .split(/;\s*[\r\n]+/)
+    .map(s => s.trim())
+    .filter(s => s.length && !s.startsWith('--'))
+  for (const stmt of statements) {
+    await pool.query(stmt)
   }
 }
 
 // Small helpers -------------------------------------------------------------
-const query = (sql, params) => pool.query(sql, params).then(r => r[0])
+// Resolves to the array of result rows (pg returns { rows, rowCount, ... }).
+const query = (sql, params) => pool.query(sql, params).then(r => r.rows)
 
-// JSON columns come back already parsed by mysql2, but be defensive.
+// JSONB columns are already parsed into JS objects by node-pg; be defensive.
 function parseJson(value, fallback) {
   if (value == null) return fallback
   if (typeof value === 'object') return value

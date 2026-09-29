@@ -55,7 +55,7 @@ async function start() {
     await migrate()
     console.log('✔ database schema ready')
   } catch (e) {
-    console.error('⚠ could not reach MySQL — start it and check .env. Error:', e.message)
+    console.error('⚠ could not reach PostgreSQL — start it and check .env. Error:', e.message)
   }
   app.listen(config.port, () => {
     console.log(`AgroSmart Rwanda backend on http://localhost:${config.port} (${config.nodeEnv})`)

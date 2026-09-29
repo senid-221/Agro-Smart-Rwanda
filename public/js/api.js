@@ -1,6 +1,6 @@
 // AgroSmart Rwanda — HTTP API client.
 // The app is online-only: every call goes to the Node/Express backend under
-// /api with a Bearer token. The backend (MySQL) is the single source of truth;
+// /api with a Bearer token. The backend (PostgreSQL) is the single source of truth;
 // AS.db is used only as a local cache hydrated by AS.sync() at boot so the
 // synchronous getters (AS.CATALOG / AS.THEME / AS.PROVIDER) keep working.
 AS.API_BASE = '' // same origin; set to an absolute URL if the API is hosted elsewhere

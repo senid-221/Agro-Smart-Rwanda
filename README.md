@@ -30,14 +30,14 @@ The `server/` directory is the real production stack that replaces the old
 on-device prototype:
 
 - **Node.js / Express** API that also serves the static frontend.
-- **MySQL** database — users, products, categories, cart, orders, theme, AI
+- **PostgreSQL** database — users, products, categories, cart, orders, theme, AI
   training (Q&A + glossary), provider config and scan history.
 - **OpenAI (GPT)** — the API key is stored **only** on the server (`.env`) and
   proxied through `POST /api/ai/chat`; it is never shipped to the browser.
 - **JWT authentication** — real sign-up/login with bcrypt-hashed passwords and
   an `admin` role gating the control panel.
 
-Full step-by-step hosting guide (Hostinger VPS: Node + MySQL + pm2 + nginx +
+Full step-by-step hosting guide (Hostinger VPS: Node + PostgreSQL + pm2 + nginx +
 SSL): see **[`server/DEPLOY.md`](server/DEPLOY.md)**.
 
 ```bash
@@ -85,10 +85,10 @@ service worker on mobile).
 
 ```
 server.js              zero-dependency static server (frontend-only preview)
-server/                production backend (Express + MySQL + OpenAI proxy + JWT)
+server/                production backend (Express + PostgreSQL + OpenAI proxy + JWT)
   src/index.js         app entry: serves /api and the static frontend
   src/routes/          auth, catalog, orders, ai, admin
-  src/schema.sql       MySQL schema
+  src/schema.sql       PostgreSQL schema
   src/seed.js          catalog + admin seeding
   DEPLOY.md            Hostinger VPS deployment guide
   .env.example         required environment variables (copy to .env)

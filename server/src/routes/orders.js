@@ -18,7 +18,7 @@ function shapeOrder(r) {
 
 // GET /api/cart
 router.get('/cart', async (req, res) => {
-  const rows = await query('SELECT items FROM carts WHERE user_id = ? LIMIT 1', [req.user.id])
+  const rows = await query('SELECT items FROM carts WHERE user_id = $1 LIMIT 1', [req.user.id])
   res.json(rows[0] ? parseJson(rows[0].items, []) : [])
 })
 
@@ -26,8 +26,8 @@ router.get('/cart', async (req, res) => {
 router.put('/cart', async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : []
   await query(
-    `INSERT INTO carts (user_id, items) VALUES (?,?)
-     ON DUPLICATE KEY UPDATE items = VALUES(items)`,
+    `INSERT INTO carts (user_id, items, updated_at) VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET items = EXCLUDED.items, updated_at = NOW()`,
     [req.user.id, JSON.stringify(items)]
   )
   res.json({ ok: true, items })
@@ -38,21 +38,20 @@ router.post('/orders', async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : []
   if (!items.length) return res.status(400).json({ error: 'empty' })
   const total = Number(req.body.total) || 0
-  const result = await query(
-    `INSERT INTO orders (user_id, items, total, status) VALUES (?,?,?, 'received')`,
+  const inserted = await query(
+    `INSERT INTO orders (user_id, items, total, status)
+     VALUES ($1, $2::jsonb, $3, 'received') RETURNING *`,
     [req.user.id, JSON.stringify(items), total]
   )
-  await query('DELETE FROM carts WHERE user_id = ?', [req.user.id])
-  const rows = await query('SELECT * FROM orders WHERE id = ? LIMIT 1', [result.insertId])
-  res.json(shapeOrder(rows[0]))
+  await query('DELETE FROM carts WHERE user_id = $1', [req.user.id])
+  res.json(shapeOrder(inserted[0]))
 })
 
 // GET /api/orders  (admin sees all, users see their own)
 router.get('/orders', async (req, res) => {
-  const admin = req.user.role === 'admin'
-  const rows = admin
+  const rows = req.user.role === 'admin'
     ? await query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200')
-    : await query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 200', [req.user.id])
+    : await query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200', [req.user.id])
   res.json(rows.map(shapeOrder))
 })
 
@@ -60,7 +59,8 @@ router.get('/orders', async (req, res) => {
 router.post('/scans', async (req, res) => {
   const b = req.body || {}
   await query(
-    `INSERT INTO scans (user_id, crop, disease, confidence, meta) VALUES (?,?,?,?,?)`,
+    `INSERT INTO scans (user_id, crop, disease, confidence, meta)
+     VALUES ($1, $2, $3, $4, $5::jsonb)`,
     [req.user.id, b.crop || null, b.disease || null, Number(b.confidence) || null,
       JSON.stringify(b.meta || {})]
   )
@@ -70,7 +70,7 @@ router.post('/scans', async (req, res) => {
 // GET /api/scans
 router.get('/scans', async (req, res) => {
   const rows = await query(
-    'SELECT * FROM scans WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [req.user.id])
+    'SELECT * FROM scans WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50', [req.user.id])
   res.json(rows.map(r => ({
     id: r.id, crop: r.crop, disease: r.disease, confidence: r.confidence,
     meta: parseJson(r.meta, {}), at: new Date(r.created_at).getTime()

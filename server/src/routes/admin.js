@@ -44,19 +44,22 @@ router.post('/product/save', async (req, res) => {
   const p = req.body.product || {}
   if (!p.id) return res.status(400).json({ error: 'no_id' })
   const unit = p.unit || {}
-  await query(
+  const rows = await query(
     `INSERT INTO products (id, cat, en, rw, price, unit_en, unit_rw, emoji, img, hidden, sort)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)
-     ON DUPLICATE KEY UPDATE cat=VALUES(cat), en=VALUES(en), rw=VALUES(rw), price=VALUES(price),
-       unit_en=VALUES(unit_en), unit_rw=VALUES(unit_rw), emoji=VALUES(emoji), img=VALUES(img), hidden=VALUES(hidden)`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     ON CONFLICT (id) DO UPDATE SET
+       cat=EXCLUDED.cat, en=EXCLUDED.en, rw=EXCLUDED.rw, price=EXCLUDED.price,
+       unit_en=EXCLUDED.unit_en, unit_rw=EXCLUDED.unit_rw, emoji=EXCLUDED.emoji,
+       img=EXCLUDED.img, hidden=EXCLUDED.hidden
+     RETURNING *`,
     [clean(p.id), p.cat || 'seeds', clean(p.en), clean(p.rw), Number(p.price) || 0,
-      unit.en || 'piece', unit.rw || 'igikoresho 1', p.emoji || '', p.img || '', p.hidden ? 1 : 0, 0]
+      unit.en || 'piece', unit.rw || 'igikoresho 1', p.emoji || '', p.img || '',
+      !!p.hidden, 0]
   )
-  const rows = await query('SELECT * FROM products WHERE id=? LIMIT 1', [clean(p.id)])
   res.json(rowToProduct(rows[0]))
 })
 router.post('/product/delete', async (req, res) => {
-  await query('DELETE FROM products WHERE id=?', [clean(req.body.id)])
+  await query('DELETE FROM products WHERE id=$1', [clean(req.body.id)])
   res.json({ ok: true })
 })
 
@@ -64,16 +67,16 @@ router.post('/product/delete', async (req, res) => {
 router.post('/category/save', async (req, res) => {
   const c = req.body.category || {}
   if (!c.id) return res.status(400).json({ error: 'no_id' })
-  await query(
-    `INSERT INTO categories (id, en, rw, emoji, hidden, sort) VALUES (?,?,?,?,?,?)
-     ON DUPLICATE KEY UPDATE en=VALUES(en), rw=VALUES(rw), emoji=VALUES(emoji), hidden=VALUES(hidden)`,
-    [clean(c.id), clean(c.en), clean(c.rw), c.emoji || '🧺', c.hidden ? 1 : 0, 0]
+  const rows = await query(
+    `INSERT INTO categories (id, en, rw, emoji, hidden, sort) VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (id) DO UPDATE SET en=EXCLUDED.en, rw=EXCLUDED.rw, emoji=EXCLUDED.emoji, hidden=EXCLUDED.hidden
+     RETURNING *`,
+    [clean(c.id), clean(c.en), clean(c.rw), c.emoji || '🧺', !!c.hidden, 0]
   )
-  const rows = await query('SELECT * FROM categories WHERE id=? LIMIT 1', [clean(c.id)])
   res.json(rowToCategory(rows[0]))
 })
 router.post('/category/delete', async (req, res) => {
-  await query('DELETE FROM categories WHERE id=?', [clean(req.body.id)])
+  await query('DELETE FROM categories WHERE id=$1', [clean(req.body.id)])
   res.json({ ok: true })
 })
 
@@ -81,7 +84,8 @@ router.post('/category/delete', async (req, res) => {
 router.post('/theme/save', async (req, res) => {
   const t = req.body.theme || {}
   await query(
-    `INSERT INTO theme (id, data) VALUES ('site', ?) ON DUPLICATE KEY UPDATE data=VALUES(data)`,
+    `INSERT INTO theme (id, data) VALUES ('site', $1::jsonb)
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
     [JSON.stringify({
       id: 'site', titleEn: t.titleEn || '', titleRw: t.titleRw || '',
       subEn: t.subEn || '', subRw: t.subRw || '', font: t.font || '',
@@ -97,14 +101,14 @@ router.post('/qa/save', async (req, res) => {
   const r = req.body.item || {}
   const id = clean(r.id) || newId('qa_')
   await query(
-    `INSERT INTO ai_qa (id, q, a, q_en, a_en) VALUES (?,?,?,?,?)
-     ON DUPLICATE KEY UPDATE q=VALUES(q), a=VALUES(a), q_en=VALUES(q_en), a_en=VALUES(a_en)`,
+    `INSERT INTO ai_qa (id, q, a, q_en, a_en) VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (id) DO UPDATE SET q=EXCLUDED.q, a=EXCLUDED.a, q_en=EXCLUDED.q_en, a_en=EXCLUDED.a_en`,
     [id, r.q || '', r.a || '', r.qEn || '', r.aEn || '']
   )
   res.json({ id, ...r })
 })
 router.post('/qa/delete', async (req, res) => {
-  await query('DELETE FROM ai_qa WHERE id=?', [clean(req.body.id)]); res.json({ ok: true })
+  await query('DELETE FROM ai_qa WHERE id=$1', [clean(req.body.id)]); res.json({ ok: true })
 })
 
 // ---- AI training: glossary ----
@@ -112,14 +116,14 @@ router.post('/glossary/save', async (req, res) => {
   const r = req.body.item || {}
   const id = clean(r.id) || newId('gl_')
   await query(
-    `INSERT INTO ai_glossary (id, term, def, def_en) VALUES (?,?,?,?)
-     ON DUPLICATE KEY UPDATE term=VALUES(term), def=VALUES(def), def_en=VALUES(def_en)`,
+    `INSERT INTO ai_glossary (id, term, def, def_en) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (id) DO UPDATE SET term=EXCLUDED.term, def=EXCLUDED.def, def_en=EXCLUDED.def_en`,
     [id, r.term || '', r.def || '', r.defEn || '']
   )
   res.json({ id, ...r })
 })
 router.post('/glossary/delete', async (req, res) => {
-  await query('DELETE FROM ai_glossary WHERE id=?', [clean(req.body.id)]); res.json({ ok: true })
+  await query('DELETE FROM ai_glossary WHERE id=$1', [clean(req.body.id)]); res.json({ ok: true })
 })
 
 // ---- AI provider (mode/model/research only; the key is server-side) ----
@@ -127,9 +131,9 @@ router.post('/provider/save', async (req, res) => {
   const p = req.body.provider || {}
   const mode = p.mode === 'builtin' ? 'builtin' : 'remote'
   await query(
-    `INSERT INTO provider (id, mode, model, research_online) VALUES ('current',?,?,?)
-     ON DUPLICATE KEY UPDATE mode=VALUES(mode), model=VALUES(model), research_online=VALUES(research_online)`,
-    [mode, clean(p.model) || config.openai.model, p.researchOnline ? 1 : 0]
+    `INSERT INTO provider (id, mode, model, research_online) VALUES ('current', $1, $2, $3)
+     ON CONFLICT (id) DO UPDATE SET mode=EXCLUDED.mode, model=EXCLUDED.model, research_online=EXCLUDED.research_online`,
+    [mode, clean(p.model) || config.openai.model, !!p.researchOnline]
   )
   res.json({ ok: true })
 })
@@ -148,10 +152,10 @@ router.post('/account/save', async (req, res) => {
 
   if (password) {
     const hash = await bcrypt.hash(password, 10)
-    await query('UPDATE users SET national_id=?, phone=?, name=?, password_hash=? WHERE id=?',
+    await query('UPDATE users SET national_id=$1, phone=$2, name=$3, password_hash=$4 WHERE id=$5',
       [nationalId, phone, name, hash, admin.id])
   } else {
-    await query('UPDATE users SET national_id=?, phone=?, name=? WHERE id=?',
+    await query('UPDATE users SET national_id=$1, phone=$2, name=$3 WHERE id=$4',
       [nationalId, phone, name, admin.id])
   }
   res.json({ ok: true, admin: { adminId: nationalId, phone, name } })
