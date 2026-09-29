@@ -10,16 +10,27 @@ router.use(requireAdmin)
 const clean = s => String(s == null ? '' : s).trim()
 const normPhone = s => clean(s).replace(/[\s-]/g, '')
 
+// Shape an ai_products row for the client (dates as ISO strings).
+const rowToCropProduct = r => ({
+  id: r.id, name: r.name, nameEn: r.name_en, activeIngredient: r.active_ingredient,
+  type: r.type, targetCrop: r.target_crop, targetProblem: r.target_problem,
+  application: r.application, dose: r.dose, phi: r.phi, rei: r.rei,
+  resistanceGroup: r.resistance_group, registration: r.registration,
+  safety: r.safety, source: r.source,
+  verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : ''
+})
+
 // GET /api/admin/state
 router.get('/state', async (_req, res) => {
-  const [products, categories, themeRows, qa, glossary, provRows, adminRows] = await Promise.all([
+  const [products, categories, themeRows, qa, glossary, provRows, adminRows, cropProducts] = await Promise.all([
     query('SELECT * FROM products ORDER BY sort ASC, id ASC'),
     query('SELECT * FROM categories ORDER BY sort ASC, id ASC'),
     query("SELECT data FROM theme WHERE id='site' LIMIT 1"),
     query('SELECT * FROM ai_qa'),
     query('SELECT * FROM ai_glossary'),
     query("SELECT * FROM provider WHERE id='current' LIMIT 1"),
-    query("SELECT * FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1")
+    query("SELECT * FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1"),
+    query('SELECT * FROM ai_products ORDER BY verified_at DESC NULLS LAST, id ASC')
   ])
   const p = provRows[0] || {}
   const a = adminRows[0] || {}
@@ -29,6 +40,7 @@ router.get('/state', async (_req, res) => {
     theme: themeRows[0] ? parseJson(themeRows[0].data, { id: 'site' }) : { id: 'site' },
     qa: qa.map(r => ({ id: r.id, q: r.q, a: r.a, qEn: r.q_en, aEn: r.a_en })),
     glossary: glossary.map(r => ({ id: r.id, term: r.term, def: r.def, defEn: r.def_en })),
+    cropProducts: cropProducts.map(rowToCropProduct),
     // apiKey is NEVER sent to the client — it lives in the server environment.
     provider: {
       id: 'current', mode: p.mode || 'builtin', name: 'OpenAI (server)',
@@ -159,6 +171,36 @@ router.post('/account/save', async (req, res) => {
       [nationalId, phone, name, admin.id])
   }
   res.json({ ok: true, admin: { adminId: nationalId, phone, name } })
+})
+
+// ---- Crop-protection product KB (verified crop medicine the Doctor may name) ----
+// Only admin-seeded rows exist here; the AI is forbidden from inventing products,
+// so every field is taken verbatim from what the admin enters (label / RAB reg.).
+router.post('/crop-product/save', async (req, res) => {
+  const p = req.body.product || {}
+  const id = clean(p.id) || newId('cp_')
+  const rows = await query(
+    `INSERT INTO ai_products
+       (id, name, name_en, active_ingredient, type, target_crop, target_problem,
+        application, dose, phi, rei, resistance_group, registration, safety, source, verified_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       name=EXCLUDED.name, name_en=EXCLUDED.name_en, active_ingredient=EXCLUDED.active_ingredient,
+       type=EXCLUDED.type, target_crop=EXCLUDED.target_crop, target_problem=EXCLUDED.target_problem,
+       application=EXCLUDED.application, dose=EXCLUDED.dose, phi=EXCLUDED.phi, rei=EXCLUDED.rei,
+       resistance_group=EXCLUDED.resistance_group, registration=EXCLUDED.registration,
+       safety=EXCLUDED.safety, source=EXCLUDED.source, verified_at=EXCLUDED.verified_at
+     RETURNING *`,
+    [id, clean(p.name), clean(p.nameEn), clean(p.activeIngredient), clean(p.type),
+      clean(p.targetCrop), clean(p.targetProblem), clean(p.application), clean(p.dose),
+      clean(p.phi), clean(p.rei), clean(p.resistanceGroup), clean(p.registration),
+      clean(p.safety), clean(p.source)]
+  )
+  res.json(rowToCropProduct(rows[0]))
+})
+router.post('/crop-product/delete', async (req, res) => {
+  await query('DELETE FROM ai_products WHERE id=$1', [clean(req.body.id)])
+  res.json({ ok: true })
 })
 
 module.exports = router

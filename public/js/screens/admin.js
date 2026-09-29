@@ -54,6 +54,7 @@ AS.renderAdmin = function (container, app) {
     if (panel === 'categories') return renderCategories(body)
     if (panel === 'appearance') return renderAppearance(body)
     if (panel === 'ai') return renderAI(body)
+    if (panel === 'cropmed') return renderCropMed(body)
     if (panel === 'provider') return renderProvider(body)
   }
 
@@ -64,6 +65,7 @@ AS.renderAdmin = function (container, app) {
       ['categories', 'img/leaf.png', 'admin_categories_d'],
       ['appearance', 'img/settings.png', 'admin_appearance_d'],
       ['ai', 'img/chat.png', 'admin_ai_d'],
+      ['cropmed', 'img/book.png', 'admin_cropmed_d'],
       ['provider', 'img/chemistry.png', 'admin_provider_d']
     ]
     body.innerHTML = `<div class="grid-2">` + cards.map(([k, ico, d]) => `
@@ -381,6 +383,106 @@ AS.renderAdmin = function (container, app) {
           await load(); draw()
         }
       }
+    }
+  }
+
+  // ---------- crop-protection product KB (verified crop medicine) ----------
+  const CP_TYPES = ['fungicide', 'insecticide', 'herbicide', 'bactericide', 'nematicide',
+    'biological', 'fertilizer', 'micronutrient', 'soil-amendment', 'other']
+
+  function renderCropMed(body) {
+    const crops = AS.CROPS || {}
+    body.innerHTML = `
+      <p class="progress-note">${tr('admin_cropmed_hint')}</p>
+      <button class="btn btn-primary sm" id="addM">+ ${tr('admin_add_cropmed')}</button>
+      <div id="mForm"></div>
+      <div class="section-title">${tr('admin_cropmed_list')}</div>
+      <div id="mList"></div>`
+
+    const list = body.querySelector('#mList')
+    const items = state.cropProducts || []
+    if (!items.length) {
+      list.innerHTML = `<div class="empty-state"><span class="emoji">💊</span>${tr('admin_cropmed_empty')}</div>`
+    }
+    items.forEach(x => {
+      const row = document.createElement('div'); row.className = 'list-row qa-row'
+      const nm = (lang === 'en' ? (x.nameEn || x.name) : (x.name || x.nameEn)) || x.id
+      const meta = [x.activeIngredient, x.type, x.targetCrop].filter(Boolean).join(' · ')
+      row.innerHTML = `<span class="emoji">💊</span>
+        <span class="body"><span class="name">${esc(nm)}</span><span class="meta">${esc(meta)}</span></span>`
+      const act = document.createElement('span'); act.className = 'row-actions'
+      const e = document.createElement('button'); e.className = 'mini-btn'; e.textContent = tr('admin_edit'); e.onclick = () => mForm(x); act.appendChild(e)
+      const d = document.createElement('button'); d.className = 'mini-btn danger'; d.textContent = tr('admin_delete')
+      d.onclick = async () => { await AS.api.post('/admin/crop-product/delete', { id: x.id }); await load(); draw() }; act.appendChild(d)
+      row.appendChild(act); list.appendChild(row)
+    })
+
+    body.querySelector('#addM').onclick = () => mForm(null)
+
+    function mForm(x) {
+      const isNew = !x
+      const f = x || {}
+      const w = body.querySelector('#mForm')
+      const cropOpts = `<option value="">${tr('admin_cropmed_any')}</option>` +
+        Object.entries(crops).map(([id, c]) =>
+          `<option value="${esc(id)}" ${f.targetCrop === id ? 'selected' : ''}>${esc(c[lang] || c.en)}</option>`).join('')
+      const typeOpts = CP_TYPES.map(t =>
+        `<option value="${t}" ${f.type === t ? 'selected' : ''}>${esc(tr('admin_cpt_' + t) === ('admin_cpt_' + t) ? t : tr('admin_cpt_' + t))}</option>`).join('')
+      w.innerHTML = `<div class="card form">
+        <div class="form-title">${isNew ? tr('admin_add_cropmed') : tr('admin_edit')}${!isNew ? ': ' + esc(f.id) : ''}</div>
+        <div class="two">
+          <label>${tr('admin_name_rw')}<input id="m_name" value="${esc(f.name)}"></label>
+          <label>${tr('admin_name_en')}<input id="m_nameEn" value="${esc(f.nameEn)}"></label>
+        </div>
+        <label>${tr('admin_cp_ai')}<input id="m_ai" value="${esc(f.activeIngredient)}" placeholder="e.g. metalaxyl-M + mancozeb"></label>
+        <div class="two">
+          <label>${tr('admin_cp_type')}<select id="m_type">${typeOpts}</select></label>
+          <label>${tr('admin_cp_crop')}<select id="m_crop">${cropOpts}</select></label>
+        </div>
+        <label>${tr('admin_cp_problem')}<input id="m_problem" value="${esc(f.targetProblem)}" placeholder="${esc(tr('admin_cp_problem_ph'))}"></label>
+        <label>${tr('admin_cp_dose')}<input id="m_dose" value="${esc(f.dose)}" placeholder="e.g. 2.5 g/L, spray every 10-14 days"></label>
+        <label>${tr('admin_cp_app')}<textarea id="m_app" rows="2">${esc(f.application)}</textarea></label>
+        <div class="two">
+          <label>${tr('admin_cp_phi')}<input id="m_phi" value="${esc(f.phi)}" placeholder="e.g. 14 days"></label>
+          <label>${tr('admin_cp_rei')}<input id="m_rei" value="${esc(f.rei)}" placeholder="e.g. 24 h"></label>
+        </div>
+        <div class="two">
+          <label>${tr('admin_cp_frac')}<input id="m_frac" value="${esc(f.resistanceGroup)}" placeholder="FRAC / IRAC group"></label>
+          <label>${tr('admin_cp_reg')}<input id="m_reg" value="${esc(f.registration)}" placeholder="RAB registration no."></label>
+        </div>
+        <label>${tr('admin_cp_safety')}<textarea id="m_safety" rows="2">${esc(f.safety)}</textarea></label>
+        <label>${tr('admin_cp_source')}<input id="m_source" value="${esc(f.source)}" placeholder="${esc(tr('admin_cp_source_ph'))}"></label>
+        <div class="form-row">
+          <button class="btn btn-primary sm" id="m_save">${tr('admin_save')}</button>
+          <button class="btn btn-outline sm" id="m_cancel">${tr('admin_cancel')}</button>
+        </div>
+        <div class="err" id="m_err"></div>
+      </div>`
+      w.querySelector('#m_cancel').onclick = () => { w.innerHTML = '' }
+      w.querySelector('#m_save').onclick = async () => {
+        const name = w.querySelector('#m_name').value.trim()
+        const nameEn = w.querySelector('#m_nameEn').value.trim()
+        const err = w.querySelector('#m_err')
+        if (!name && !nameEn) { err.textContent = tr('admin_err_name'); return }
+        const product = {
+          id: f.id || '', name, nameEn,
+          activeIngredient: w.querySelector('#m_ai').value.trim(),
+          type: w.querySelector('#m_type').value,
+          targetCrop: w.querySelector('#m_crop').value,
+          targetProblem: w.querySelector('#m_problem').value.trim(),
+          dose: w.querySelector('#m_dose').value.trim(),
+          application: w.querySelector('#m_app').value.trim(),
+          phi: w.querySelector('#m_phi').value.trim(),
+          rei: w.querySelector('#m_rei').value.trim(),
+          resistanceGroup: w.querySelector('#m_frac').value.trim(),
+          registration: w.querySelector('#m_reg').value.trim(),
+          safety: w.querySelector('#m_safety').value.trim(),
+          source: w.querySelector('#m_source').value.trim()
+        }
+        await AS.api.post('/admin/crop-product/save', { product })
+        await load(); draw()
+      }
+      w.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }
 
