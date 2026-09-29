@@ -1,10 +1,13 @@
-// AgroSmart Rwanda — live online research.
-// Before answering, the assistant can look up a short, cited summary of the
-// topic the farmer asked about. Only sources that allow cross-origin reads from
-// a file:// or localhost page are usable client-side; the Wikipedia REST summary
-// API is CORS-enabled, so we prefer Kinyarwanda (rw) and fall back to English
-// (en) when the rw article is missing or empty. Anything that fails (offline,
-// blocked, no article) resolves to null so the app never breaks.
+// AgroSmart Rwanda — research sources for the AI.
+// Before answering, the assistant can attach a short, cited note about the
+// topic the farmer asked about. Two sources are combined:
+//   1. RAB (rab.gov.rw) — baked into data/rab.js, OFFLINE and always available,
+//      because RAB pages cannot be fetched from the browser (CORS).
+//   2. Wikipedia — fetched live only when online; the REST summary API is
+//      CORS-enabled, so we prefer a substantial Kinyarwanda (rw) article and
+//      fall back to the richer English (en) one.
+// Anything that fails (offline, blocked, no article) resolves to null so the
+// app never breaks and still works from a double-clicked index.html.
 window.AS = window.AS || {}
 
 AS.research = (function () {
@@ -50,32 +53,49 @@ AS.research = (function () {
       const c = crops[g.id] || {}
       const names = [c.en, c.rw, g.name && g.name.en, g.name && g.name.rw].filter(Boolean)
       if (names.some(n => low.includes(String(n).toLowerCase()))) {
-        return { kind: 'crop', rw: c.rw || (g.name && g.name.rw), en: CROP_WIKI[g.id] || (c.en || (g.name && g.name.en)) }
+        return { kind: 'crop', id: g.id, rw: c.rw || (g.name && g.name.rw), en: CROP_WIKI[g.id] || (c.en || (g.name && g.name.en)) }
       }
     }
     for (const d of (AS.DISEASES || [])) {
       const names = [d.name && d.name.en, d.name && d.name.rw].filter(Boolean)
       if (names.some(n => low.includes(String(n).toLowerCase()))) {
-        return { kind: 'disease', rw: d.name && d.name.rw, en: d.name && d.name.en }
+        return { kind: 'disease', id: d.crop, rw: d.name && d.name.rw, en: d.name && d.name.en }
       }
     }
     return null
   }
 
-  // Returns a short cited note in the farmer's language, or null.
+  // Build the research note. RAB is an OFFLINE, always-available source (baked
+  // into data/rab.js); Wikipedia is fetched only when online. Both are cited.
+  // Returns { text, url, title } or null when nothing relevant is found.
   async function lookup(text, lang) {
     const topic = detectTopic(text, lang)
     if (!topic) return null
-    const rwTitle = topic.kind === 'crop' ? topic.rw : topic.rw
-    const found = await bilingual(rwTitle, topic.en)
-    if (!found) return null
-    // keep it short: first ~2 sentences / 320 chars
-    let snip = found.extract
-    const cut = snip.match(/^(.*?[.!?])(\s.*?[.!?])?/)
-    if (cut) snip = (cut[1] + (cut[2] || '')).trim()
-    if (snip.length > 340) snip = snip.slice(0, 340).replace(/\s+\S*$/, '') + '…'
-    const label = lang === 'en' ? 'Online research (Wikipedia)' : 'Ubushakashatsi kuri interineti (Wikipedia)'
-    return { text: '🔎 ' + label + ': ' + snip + '\n' + found.url, url: found.url, title: found.title }
+
+    const parts = []
+    // 1 — RAB (offline)
+    if (AS.RAB && topic.id) {
+      const rab = AS.RAB.cropNote(topic.id, lang)
+      if (rab) parts.push(rab)
+    }
+    // 2 — Wikipedia (online, best-effort)
+    const found = await bilingual(topic.rw, topic.en)
+    if (found) {
+      let snip = found.extract
+      const cut = snip.match(/^(.*?[.!?])(\s.*?[.!?])?/)
+      if (cut) snip = (cut[1] + (cut[2] || '')).trim()
+      if (snip.length > 340) snip = snip.slice(0, 340).replace(/\s+\S*$/, '') + '…'
+      const label = lang === 'en' ? 'Wikipedia' : 'Wikipedia'
+      parts.push({ text: '🔎 ' + label + ': ' + snip + '\n' + found.url, url: found.url, title: found.title })
+    }
+
+    if (!parts.length) return null
+    const primary = parts[0]
+    return {
+      text: parts.map(p => p.text).join('\n\n'),
+      url: primary.url,
+      title: primary.title
+    }
   }
 
   return { lookup, detectTopic, summary }
