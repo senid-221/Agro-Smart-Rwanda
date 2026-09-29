@@ -201,8 +201,9 @@ router.post('/chat', requireAuth, async (req, res) => {
     const out = await doctorTurn(req.user.id, { message, lang, ctx })
     res.json({ intent: 'remote', ctx, text: out.text, caseId: out.caseId, cropId: out.cropId, sources: out.sources, confidence: out.confidence, emergency: out.emergency })
   } catch (err) {
+    console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream',
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.detail || '',
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'
@@ -236,8 +237,9 @@ router.post('/analyze', requireAuth, async (req, res) => {
     }
     res.json({ findings: text })
   } catch (err) {
+    console.error('[ai/analyze] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'vision_unavailable', code: err.code || 'upstream',
+      error: 'vision_unavailable', code: err.code || 'upstream', detail: err.detail || '',
       message: lang === 'en'
         ? 'The photo could not be analysed right now. Please try again or describe the symptoms.'
         : 'Ifoto ntibashije gusesengurwa ubu. Ongera ugerageze cyangwa usobanure ibimenyetso.'
@@ -295,8 +297,9 @@ router.post('/cases/:id/followup', requireAuth, async (req, res) => {
     })
     res.json({ text: out.text, caseId: c.id, sources: out.sources, confidence: out.confidence, emergency: out.emergency })
   } catch (err) {
+    console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream',
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.detail || '',
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'

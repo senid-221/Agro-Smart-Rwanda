@@ -176,18 +176,43 @@ async function chat({ messages, system, temperature = 0.35, maxTokens = 700 }) {
     max_tokens: maxTokens,
     messages: [{ role: 'system', content: system }, ...(messages || [])]
   }
-  const res = await fetch(`${config.openai.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.openai.key}`
-    },
-    body: JSON.stringify(body)
-  })
+  let res
+  try {
+    res = await fetch(`${config.openai.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.openai.key}`
+      },
+      body: JSON.stringify(body)
+    })
+  } catch (netErr) {
+    // Network-level failure (DNS, TLS, timeout, egress blocked).
+    const err = new Error(`OpenAI network error: ${netErr.message}`)
+    err.code = 'network'
+    err.detail = 'network'
+    console.error('[openai] network error calling chat/completions:', netErr.message)
+    throw err
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    const err = new Error(`OpenAI HTTP ${res.status}: ${text.slice(0, 200)}`)
-    err.code = 'upstream'
+    // Pull OpenAI's structured reason when present so logs/diagnostics are useful.
+    let reason = ''
+    try {
+      const parsed = JSON.parse(text)
+      reason = (parsed.error && (parsed.error.message || parsed.error.type)) || ''
+    } catch (_) { /* non-JSON body */ }
+    const err = new Error(`OpenAI HTTP ${res.status}: ${(reason || text).slice(0, 300)}`)
+    err.status = res.status
+    // Map the common upstream failures to a stable, non-secret code the client
+    // can act on. Never include the API key or raw body in what we surface.
+    err.code = res.status === 401 || res.status === 403 ? 'invalid_key'
+      : res.status === 429 ? 'rate_limited'
+      : res.status === 404 ? 'model_not_found'
+      : res.status >= 500 ? 'upstream_5xx'
+      : 'upstream'
+    err.detail = `${res.status}${reason ? ' ' + reason.slice(0, 160) : ''}`.trim()
+    console.error(`[openai] chat/completions failed HTTP ${res.status} (model=${config.openai.model}):`, (reason || text).slice(0, 300))
     throw err
   }
   const data = await res.json()
