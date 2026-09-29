@@ -12,8 +12,11 @@ AS.renderAssistant = function (container, app) {
 
   container.innerHTML = `
     <div class="store-head">
-      <div class="section-title" style="margin:0">${tr('assistant_title')} 🤖</div>
-      <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
+      <div class="section-title" style="margin:0">${tr('assistant_title')} 🩺</div>
+      <div style="display:flex;gap:6px">
+        <button class="cart-btn" id="clearBtn" aria-label="${tr('assistant_clear')}" title="${tr('assistant_clear')}">🗑️</button>
+        <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
+      </div>
     </div>
     <p class="progress-note" style="margin:2px 0 10px">${tr('assistant_sub')}</p>
     <div class="card policy-card" id="howCard" hidden>
@@ -57,6 +60,27 @@ AS.renderAssistant = function (container, app) {
     chips.appendChild(c)
   })
 
+  // Restore the Doctor's memory of this farmer from the server on open.
+  async function loadHistory() {
+    const note = document.createElement('div')
+    note.className = 'bubble ai'
+    note.textContent = tr('assistant_loading')
+    log.appendChild(note)
+    const res = await AS.api.get('/ai/history')
+    note.remove()
+    if (res && res.messages && res.messages.length) {
+      chatLog = res.messages.map(m => ({ who: m.role === 'user' ? 'user' : 'ai', text: m.content }))
+    }
+    drawLog()
+  }
+
+  container.querySelector('#clearBtn').onclick = async () => {
+    await AS.api.del('/ai/history')
+    chatLog = []
+    chatCtx = {}
+    drawLog()
+  }
+
   async function send(text) {
     if (!text.trim()) return
     chatLog.push({ who: 'user', text })
@@ -76,6 +100,6 @@ AS.renderAssistant = function (container, app) {
 
   container.querySelector('#chatSend').onclick = () => send(input.value)
   input.onkeydown = e => { if (e.key === 'Enter') send(input.value) }
-  drawLog()
+  loadHistory()
 }
 })()

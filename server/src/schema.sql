@@ -97,11 +97,21 @@ CREATE TABLE IF NOT EXISTS password_resets (
   created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Crop AI Doctor conversation memory (per farmer, chronological).
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       VARCHAR(10)  NOT NULL CHECK (role IN ('user','assistant')),
+  content    TEXT         NOT NULL,
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for the hot query paths (per-user orders/scans, catalog by category).
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_cat ON products (cat);
 CREATE INDEX IF NOT EXISTS idx_pwreset_phone ON password_resets (phone, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_user ON ai_messages (user_id, created_at DESC);
 
 -- Function + trigger: keep carts.updated_at current (Postgres has no ON UPDATE).
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
