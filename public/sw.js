@@ -1,4 +1,4 @@
-const CACHE = 'agrosmart-v9'
+const CACHE = 'agrosmart-v10'
 const ASSETS = [
   '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png', '/icon-192.png', '/icon-512.png',
   '/js/app.js', '/js/i18n.js', '/js/db.js', '/js/api.js', '/js/ai.js', '/js/engine/detector.js',

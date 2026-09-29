@@ -1,6 +1,16 @@
 (function () {
 const catEmoji = id => (AS.PRODUCT_CATEGORIES.find(c => c.id === id) || {}).emoji || '🧺'
 
+// Real product photo when available (img/products/<id>.png); the emoji stays as
+// an automatic fallback for items whose photo has not been generated yet.
+function prodThumb(p, small) {
+  const emoji = p.emoji || catEmoji(p.cat)
+  return `<span class="prod-thumb${small ? ' small' : ''}">` +
+    `<span class="prod-emoji">${emoji}</span>` +
+    `<img src="img/products/${p.id}.png" alt="" loading="lazy" onerror="this.remove()">` +
+    `</span>`
+}
+
 async function cartCount() {
   const items = await AS.api.get('/cart')
   return items.reduce((n, i) => n + i.qty, 0)
@@ -57,7 +67,7 @@ AS.renderStore = function (container, app) {
       const card = document.createElement('button')
       card.className = 'prod-card'
       card.innerHTML = `
-        <span class="prod-emoji">${p.emoji || catEmoji(p.cat)}</span>
+        ${prodThumb(p)}
         <span class="prod-name">${p[lang]}</span>
         <span class="prod-price">${AS.fmtRWF(p.price)}</span>
         <span class="prod-unit">${p.unit[lang]}</span>
@@ -116,7 +126,7 @@ AS.renderCart = function (container, app) {
       const row = document.createElement('div')
       row.className = 'cart-row'
       row.innerHTML = `
-        <span class="prod-emoji small">${r.p.emoji || catEmoji(r.p.cat)}</span>
+        ${prodThumb(r.p, true)}
         <span class="body">
           <span class="name">${r.p[lang]}</span>
           <span class="meta">${AS.fmtRWF(r.p.price)} / ${r.p.unit[lang]}</span>
