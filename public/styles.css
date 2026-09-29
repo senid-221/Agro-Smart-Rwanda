@@ -91,8 +91,8 @@ body {
 }
 .feature-card:active { transform: scale(0.96); }
 .feature-card .emoji { font-size: 26px; display: block; margin-bottom: 4px; }
-.feature-card .label { font-weight: 600; font-size: 13px; color: var(--text); }
-.feature-card .desc { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+.feature-card .label { font-weight: 600; font-size: 13px; color: var(--text); display: block; }
+.feature-card .desc { font-size: 11px; color: var(--text-soft); margin-top: 3px; display: block; }
 
 /* ---------- hero / scan CTA ---------- */
 .scan-hero {
@@ -103,8 +103,8 @@ body {
   width: 100%; text-align: left;
 }
 .scan-hero .emoji { font-size: 40px; }
-.scan-hero .title { font-size: 17px; font-weight: 700; }
-.scan-hero .desc { font-size: 12.5px; opacity: 0.92; margin-top: 2px; }
+.scan-hero .title { font-size: 17px; font-weight: 700; display: block; }
+.scan-hero .desc { font-size: 12.5px; opacity: 0.92; margin-top: 2px; display: block; }
 
 /* ---------- list rows ---------- */
 .list-row {
