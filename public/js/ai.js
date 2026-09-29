@@ -342,8 +342,22 @@ AS.aiChat = async function (message, lang, ctx) {
   ctx = ctx && typeof ctx === 'object' ? ctx : {}
   const prov = (AS.PROVIDER && AS.PROVIDER.get()) || { mode: 'builtin' }
 
+  // Optional: research the topic online (Wikipedia) before/while answering.
+  // Runs only when the admin enabled it; silently yields nothing when offline.
+  let note = null
+  if (prov.researchOnline && AS.research) {
+    try { note = await AS.research.lookup(message, lang) } catch (e) { note = null }
+  }
+  const withNote = reply => {
+    if (note && reply && reply.text && reply.text.indexOf(note.text) === -1) {
+      reply.text = reply.text + '\n\n' + note.text
+      reply.research = { url: note.url, title: note.title }
+    }
+    return reply
+  }
+
   const trained = AS.aiTrainedReply(message, lang, ctx)
-  if (trained) return trained
+  if (trained) return withNote(trained)
 
   if (prov.mode === 'remote' && prov.apiUrl) {
     try {
@@ -363,7 +377,7 @@ AS.aiChat = async function (message, lang, ctx) {
       const text = data.text || data.reply || data.response || data.message ||
         (data.choices && data.choices[0] &&
           (data.choices[0].text || (data.choices[0].message && data.choices[0].message.content))) || ''
-      if (String(text).trim()) return { intent: 'remote', ctx, text: String(text) }
+      if (String(text).trim()) return withNote({ intent: 'remote', ctx, text: String(text) })
       throw new Error('empty reply')
     } catch (e) {
       if (prov.requireRemote) {
@@ -377,5 +391,5 @@ AS.aiChat = async function (message, lang, ctx) {
     }
   }
 
-  return AS.aiReply(message, lang, ctx)
+  return withNote(AS.aiReply(message, lang, ctx))
 }

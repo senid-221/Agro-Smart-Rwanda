@@ -105,7 +105,7 @@ AS.CUSTOM = (function () {
   // ---------- AI provider ----------
   const DEFAULT_PROVIDER = {
     id: 'current', mode: 'builtin', name: 'Built-in (offline)', model: 'agro-rules-v1',
-    apiUrl: '', apiKey: '', requireRemote: false
+    apiUrl: '', apiKey: '', requireRemote: false, researchOnline: false
   }
   if (!AS.db.find('ai_provider', 'current')) AS.db.insert('ai_provider', { ...DEFAULT_PROVIDER })
   const PROVIDER = {

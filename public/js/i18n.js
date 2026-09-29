@@ -100,6 +100,7 @@ AS.T = {
   crop_harvesting: { en: 'Harvesting & storage', rw: 'Gusarura no kubika' },
   crop_tips: { en: 'Pro tips', rw: 'Inama z\'inzobere' },
   crop_regions: { en: 'Main growing areas', rw: 'Uturere duhinga cyane' },
+  crop_overview: { en: 'About this crop', rw: 'Ibisobanuro ku gihingwa' },
 
   // fertilizer
   fert_title: { en: 'Fertilizer Guide', rw: 'Amabwiriza y\'Ifumbire' },
@@ -233,6 +234,8 @@ AS.T = {
   admin_api_url: { en: 'API URL', rw: 'API URL' },
   admin_api_key: { en: 'API key', rw: 'API key' },
   admin_require_remote: { en: 'Require remote (do not fall back to built-in offline)', rw: 'Hahatisi interineti (ntugwe ku buryo bwo mu mbere)' },
+  admin_research_online: { en: 'Research online before answering (Wikipedia)', rw: 'Kora ubushakashatsi kuri interineti mbere yo gusubiza (Wikipedia)' },
+  admin_research_hint: { en: 'When on, the AI looks up a short cited summary of the crop or disease on Wikipedia (Kinyarwanda first, then English). Needs internet; silently skips when offline.', rw: 'Iyo bikora, AI ishakisha incamake ngufi y\'igihingwa cyangwa indwara kuri Wikipedia (Ikinyarwanda mbere, hanyuma Icyongereza). Ikeneye interineti; irirengagiza iyo nta interineti.' },
   admin_provider_hint: { en: 'Remote keys are stored only on this device. In Built-in mode the AI works fully offline.', rw: 'API key ibikwa kuri iyi gusa. Mu buryo bw\'imbere AI ikora nta interineti.' },
   admin_test: { en: 'Test', rw: 'Gerageza' },
   admin_testing: { en: 'Testing…', rw: 'Ndagerageza…' },

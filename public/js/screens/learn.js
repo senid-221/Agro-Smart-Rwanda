@@ -108,6 +108,7 @@ AS.renderCropDetail = function (container, app, id) {
       <h2>${crop.name[lang]}</h2>
       <div class="sci">📍 ${crop.regions[lang]}</div>
     </div>
+    ${crop.overview ? `<div class="card result-block"><h3>🌿 ${tr('crop_overview')}</h3><p>${crop.overview[lang]}</p></div>` : ''}
     <div class="card result-block"><h3>📅 ${tr('crop_season')}</h3><p>${crop.season[lang]}</p></div>
     <div class="card result-block"><h3>🌱 ${tr('crop_planting')}</h3><ul>${crop.planting[lang].map(x => `<li>${x}</li>`).join('')}</ul></div>
     <div class="card result-block"><h3>🧪 ${tr('crop_fertilizing')}</h3><ul>${crop.fertilizing[lang].map(x => `<li>${x}</li>`).join('')}</ul></div>

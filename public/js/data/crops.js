@@ -3,6 +3,10 @@ AS.CROP_GUIDES = [
   {
     id: 'maize', emoji: '🌽',
     name: { en: 'Maize', rw: 'Ibigori' },
+    overview: {
+      en: "Maize is Rwanda's most widely grown cereal and the backbone of household food security. The grain is roasted or boiled fresh, ground into flour for kawunga and porridge, and stored for use all year; any surplus is sold to millers. It grows in almost every district but yields most in the sunny Eastern Province. Maize is mainly an energy food, so eat it together with beans for a more balanced protein. A good harvest depends on certified seed, planting on time with the rains, and the right fertilizer.",
+      rw: "Ibigori ni cyo kinyampeke gihingwa cyane mu Rwanda kandi ni umusingi w'umutekano w'ibiribwa mu ngo. Imbuto zitwikwa cyangwa zigatekwa, zigasekwa zikavamo ifu ya kawunga n'ubugari, zikabikwa zikaboneka umwaka wose; ibisagutse bigurishwa ku nganda ziseka. Bihingwa mu turere twose ariko bitanga umusaruro munini mu Ntara y'Iburasirazuba izuba ryayo ari ryinshi. Ibigori ni isoko y'ingufu ku mubiri, bityo bifatanye n'ibishyimbo kugira ngo ubone poroteyine ihagije. Umusaruro mwiza uturuka ku mbuto zemewe, gutera ku gihe hamwe n'imvura, no gukoresha ifumbire ikwiye."
+    },
     regions: { en: 'Nyagatare, Gatsibo, Bugesera, Kayonza, Rwamagana, Musanze', rw: 'Nyagatare, Gatsibo, Bugesera, Kayonza, Rwamagana, Musanze' },
     season: {
       en: 'Season A: plant late Sep - Oct (harvest Jan-Feb). Season B: plant Feb - Mar (harvest Jun-Jul). Eastern Province gives the largest harvests.',
@@ -28,6 +32,10 @@ AS.CROP_GUIDES = [
   {
     id: 'bean', emoji: '🫘',
     name: { en: 'Beans', rw: 'Ibishyimbo' },
+    overview: {
+      en: "Beans are the main source of protein for most Rwandan families and a daily staple. As a legume the plant captures nitrogen from the air and enriches the soil, which is why farmers intercrop them with maize. Climbing beans yield two to three times more than bush beans and save land. Rwanda has many improved varieties, including high-iron beans that resist disease and mature faster.",
+      rw: "Ibishyimbo ni yo soko nkuru ya poroteyine ku miryango myinshi y'Abanyarwanda kandi biribwa buri munsi. Nk'ikinyamisogwe, ikimera gikura azote mu kirere kikayishyira mu butaka, ni yo mpamvu abahinzi babitera hamwe n'ibigori. Ibishyimbo bizamuka bitanga umusaruro wikubye kabiri cyangwa gatatu kurusha ibito kandi bizigama ubutaka. Mu Rwanda haboneka imbuto nyinshi zavuguruwe, harimo ibishyimbo bikize kuri fer bihangana n'indwara kandi bikura vuba."
+    },
     regions: { en: 'Northern & Western highlands: Musanze, Burera, Nyabihu, Rulindo, Nyamasheke, Karongi', rw: 'Imisozi y\'Amajyaruguru n\'Iburengerazuba: Musanze, Burera, Nyabihu, Rulindo, Nyamasheke, Karongi' },
     season: {
       en: 'Season A: plant Oct - Nov. Season B: plant Feb - Mar. Climbing beans yield 2-3x bush beans and save land.',
@@ -53,6 +61,10 @@ AS.CROP_GUIDES = [
   {
     id: 'banana', emoji: '🍌',
     name: { en: 'Banana', rw: 'Igitoki' },
+    overview: {
+      en: "Banana is one of Rwanda's most important crops, used for cooking, ripe fruit, and brewing traditional beer. Rwanda is among Africa's leading banana producers, and the crop provides both food and steady income. A banana plant is a perennial that keeps producing from the same mat for years if well managed. The biggest threat is Kirabiranya (BXW), a bacterial wilt that can destroy a whole garden, so removing the male bud and sterilising tools is essential.",
+      rw: "Igitoki ni kimwe mu bihingwa by'ingenzi cyane mu Rwanda, gikoreshwa mu guteka, kuribwa rishije, no gucurika inzoga gakondo. U Rwanda ruri mu bihugu bya mbere bya Afurika bihingwa ibitoki, kandi iki gihingwa gitanga ibiribwa n'inyungu ihamye. Ikimera cy'igitoki kimara imyaka kinini gitanga umusaruro ku giti kimwe niba cyitaweho neza. Ingaruka mbi kurusha izindi ni Kirabiranya (BXW), indwara ya bagiteri ishobora kwangiza urubuga rwose, bityo gukuraho indabyo y'ingabo no gusukura ibikoresho ni ngombwa."
+    },
     regions: { en: 'Kayonza, Ngoma, Kirehe, Bugesera, Ruhango, Gisagara', rw: 'Kayonza, Ngoma, Kirehe, Bugesera, Ruhango, Gisagara' },
     season: {
       en: 'Plant at the start of rains (Sep-Oct or Feb-Mar). First harvest 10-14 months after planting, then continuous from the mat.',
@@ -78,6 +90,10 @@ AS.CROP_GUIDES = [
   {
     id: 'cassava', emoji: '🥔',
     name: { en: 'Cassava', rw: 'Imyumbati' },
+    overview: {
+      en: "Cassava is a hardy, drought-tolerant root crop and a key food-security reserve, especially in the drier eastern and southern regions. The starchy roots are pounded into flour for ubugali, boiled, or processed into tapioca; the young leaves are cooked as a vegetable (isombe). Once established it survives dry spells that would kill maize. The main diseases are cassava mosaic (CMD) and brown streak (CBSD), so always plant certified, resistant cuttings.",
+      rw: "Imyumbati ni igihingwa cy'imizi gikomeye, cyihanganira amapfa, kandi ni ububiko bw'ibiribwa bw'ingenzi, cyane cyane mu turere tw'amapfa two mu Burasirazuba n'Amajyepfo. Imizi yuzuyemo isukari isekwa ikavamo ifu y'ubugali, igatekwa, cyangwa igakorwamo tapiyoka; amababi mato atekwa nk'imboga (isombe). Imaze gukomera yihanganira izuba ryinshi ryatuma ibigori byuma. Indwara z'ibanze ni mozaiki (CMD) n'imirongo y'ikijuju (CBSD), bityo buri gihe tera ibiti byemewe bihangana n'indwara."
+    },
     regions: { en: 'Bugesera, Kayonza, Ngoma, Kirehe, Nyagatare, Gisagara', rw: 'Bugesera, Kayonza, Ngoma, Kirehe, Nyagatare, Gisagara' },
     season: {
       en: 'Plant at onset of rains (Oct or Feb-Mar). Harvest 8-12 months later; drought-tolerant once established.',
@@ -103,6 +119,10 @@ AS.CROP_GUIDES = [
   {
     id: 'potato', emoji: '🥔',
     name: { en: 'Irish Potato', rw: 'Ibirayi' },
+    overview: {
+      en: "The Irish potato is a high-value food and cash crop of Rwanda's cool highlands, especially in the north around Musanze and Nyabihu. It is rich in energy and vitamin C, matures in about three months, and brings farmers good income. Because it needs fertile, well-drained soil and heavy fertilizer, careful land management matters. Late blight is the most serious disease and must be sprayed on a strict schedule in the rainy season.",
+      rw: "Ibirayi ni igihingwa cy'agaciro gifite akamaro ku biribwa n'ubucuruzi mu misozi ikonje y'u Rwanda, cyane cyane mu Majyaruguru hafi ya Musanze na Nyabihu. Bikize ku ngufu na vitamini C, bikura mu mezi nka atatu, kandi biha abahinzi inyungu nziza. Kubera ko bikeneye ubutaka bwera, butoshye n'ifumbire nyinshi, gucunga ubutaka neza ni ingenzi. Ikiyongoyongo (late blight) ni indwara ikaze kurusha izindi kandi hagomba guterwa imiti ku gahunda ihamye mu gihe cy'imvura."
+    },
     regions: { en: 'Musanze, Burera, Nyabihu, Rubavu, Rulindo, Gakenke', rw: 'Musanze, Burera, Nyabihu, Rubavu, Rulindo, Gakenke' },
     season: {
       en: 'Season A: plant Feb-Mar (harvest May-Jun). Season B: plant Sep-Oct (harvest Dec-Jan). Above 1,800 m altitude.',
@@ -128,6 +148,10 @@ AS.CROP_GUIDES = [
   {
     id: 'tomato', emoji: '🍅',
     name: { en: 'Tomato', rw: 'Inyanya' },
+    overview: {
+      en: "Tomato is one of the most profitable horticultural crops for Rwandan smallholders, grown year-round near towns and markets, especially with irrigation or greenhouses. The fruit is rich in vitamins A and C and sells well to urban consumers. Because it is perishable and disease-prone, success depends on staking, careful watering, netting nurseries against whitefly, and crop rotation. Common problems are blight, bacterial wilt, and tomato yellow leaf curl virus.",
+      rw: "Inyanya ni kimwe mu bihingwa by'imboga byunguka cyane ku bahinzi bato b'Abanyarwanda, bihingwa umwaka wose hafi y'imijyi n'amasoko, cyane cyane hakoreshejwe ubwuhira cyangwa amazu y'ibimera. Imbuto ikungahaye kuri vitamini A na C kandi igurishwa neza ku baguzi bo mu mijyi. Kubera ko yangirika vuba kandi ifatwa n'indwara, gutsinda biterwa no gushyira ibiti ku nkingi, kuvomerera witonze, gushyira imiyoboro ku biti kurwanya udukoko tw'umweru, no gusimburanya ibihingwa. Ibibazo bikunze kuboneka ni ikiyongoyongo, bagiteri itera kubora, na virusi ituma amababi ahinduka umuhondo."
+    },
     regions: { en: 'Bugesera, Gashora, Kayonza, Kirehe, Rwamagana, Gisagara', rw: 'Bugesera, Gashora, Kayonza, Kirehe, Rwamagana, Gisagara' },
     season: {
       en: 'Nursery: Jan-Feb for main season; year-round under irrigation/tunnels. Transplant at 4-5 weeks old.',
@@ -153,6 +177,10 @@ AS.CROP_GUIDES = [
   {
     id: 'rice', emoji: '🌾',
     name: { en: 'Rice', rw: 'Umuceri' },
+    overview: {
+      en: "Rice is grown in Rwanda's irrigated marshlands and valley schemes, such as Bugarama, and national demand keeps rising. It is an energy-rich staple usually grown by organised cooperatives that manage water, inputs and milling together. Paddy rice is dried, milled and sold as white rice, and some is kept for seed. Good water control and leveling of the fields is the single biggest factor in the harvest.",
+      rw: "Umuceri uhingwa mu bishanga by'u Rwanda bivomerwa no mu mishinga yo mu bibaya, nka Bugarama, kandi ubusabe bw'igihugu bukomeza kwiyongera. Ni ikiribwa gikungahaye ku ngufu gisanzwe gihingwa na koperative zitunganya amazi, ibikoresho n'isekera hamwe. Umuceri w'ibitaka (paddy) urumuka, ugasekwa, ukagurishwa nk'umuceri wera, kandi igice kimwe kigabikwa nk'imbuto. Gucunga neza amazi n'uringanire bw'imirima ni cyo kintu cya mbere kigena umusaruro."
+    },
     regions: { en: 'Bugarama (Nyungwe), Rwabusoro, Gishanda marshlands, Bugesera', rw: 'Bugarama, Rwabusoro, ibishanga bya Gishanda, Bugesera' },
     season: {
       en: 'Season A: nursery Dec-Jan, transplant Jan. Season B: nursery May-Jun, transplant Jul. Join a marshland cooperative for water management.',
@@ -178,6 +206,10 @@ AS.CROP_GUIDES = [
   {
     id: 'coffee', emoji: '☕',
     name: { en: 'Coffee', rw: 'Ikawa' },
+    overview: {
+      en: "Coffee is one of Rwanda's leading export crops and an important source of cash income for hundreds of thousands of smallholder families. Rwanda grows high-quality Arabica (Bourbon) in the highlands, and much of it is fully washed at local stations, which fetch premium prices on world markets. Quality, and therefore the farmer's pay, depends on picking only fully red cherries and delivering them quickly. It is a long-term crop: trees need shade, feeding and annual pruning to stay productive.",
+      rw: "Ikawa ni kimwe mu bicuruzwa by'ibanze u Rwanda rwohereza mu mahanga kandi ni isoko y'inyungu z'amafaranga ku magana y'ibihumbi y'ingo z'abahinzi bato. U Rwanda ruhingwa ikawa nziza yo mu bwoko bwa Arabica (Bourbon) mu misozi, kandi nyinshi ikozwa mu bigo byoza bya hafi, ibi bikabona ibiciro byiza ku masoko mpuzamahanga. Ubuziranenge, bityo n'umushahara w'umuhinzi, buturuka ku gusarura gusa urutoki rutukuye neza no kurujyana vuba. Ni igihingwa cy'igihe kirekire: ibiti bikeneye igicucu, ifumbire no gukaterwa buri mwaka kugira ngo bikomeze gutanga umusaruro."
+    },
     regions: { en: 'Huye, Nyamagabe, Nyaruguru, Karongi, Rulindo, Gakenke, Kayumbu', rw: 'Huye, Nyamagabe, Nyaruguru, Karongi, Rulindo, Gakenke, Kayumbu' },
     season: {
       en: 'Plant at start of Season A rains. Main harvest Mar-Jun (cherry). Prune after harvest (Jul-Sep).',
@@ -203,6 +235,10 @@ AS.CROP_GUIDES = [
   {
     id: 'tea', emoji: '🍵',
     name: { en: 'Tea', rw: 'Icyayi' },
+    overview: {
+      en: "Tea is Rwanda's other major export earner, grown on highland estates and by smallholders around factories in the west and north. A tea bush is a long-lived perennial that can produce for forty years or more, giving farmers a steady monthly income. Only the two leaves and a bud are plucked, every week or so, and the green leaf must reach the factory the same day to keep quality. Tea prefers the cool, wet, misty highlands where few other crops thrive.",
+      rw: "Icyayi ni ikindi gicuruzwa gikuru cyoherezwa mu mahanga n'u Rwanda, gihingwa mu mirima minini yo mu misozi n'abahinzi bato baturiye inganda mu Burengerazuba n'Amajyaruguru. Igiti cy'icyayi kimara igihe kirekire, gishobora gutanga umusaruro imyaka mirongo ine cyangwa irenga, bigaha abahinzi inyungu ihamye buri kwezi. Hasarurwa gusa amababi abiri n'ijwi, hafi ya buri cyumweru, kandi amababi ataranywa agomba kugera ku ruganda uwo munsi kugira ngo ubuziranenge burindwe. Icyayi gikunda imisozi ikonje, ifite imvura n'igihu aho ibindi bihingwa bike bishobora gukura."
+    },
     regions: { en: 'Rulindo, Gakenke, Nyabihu, Gisakura (Nyungwe), Kitabi, Sorwathe', rw: 'Rulindo, Gakenke, Nyabihu, Gisakura (Nyungwe), Kitabi, Sorwathe' },
     season: {
       en: 'Plant seedlings at start of rains. First light pluck at 2 years; full production from year 4-5, lasting 40+ years.',
@@ -228,6 +264,10 @@ AS.CROP_GUIDES = [
   {
     id: 'sorghum', emoji: '🌾',
     name: { en: 'Sorghum', rw: 'Amasaka' },
+    overview: {
+      en: "Sorghum is a traditional, drought-tolerant cereal that grows reliably in Rwanda's drier eastern zones where maize often fails. The grain is used for porridge and flour and for brewing local beer, and improved varieties now yield twice as much as old local types. It is a valuable food-security and climate-resilience crop as rainfall becomes less predictable. Birds are the biggest pre-harvest loss, so fields need guarding near maturity.",
+      rw: "Amasaka ni ikinyampeke gakondo cyihanganira amapfa gikura neza mu turere tw'amapfa two mu Burasirazuba bw'u Rwanda aho ibigori bikunze gutinda cyangwa kwangirika. Imbuto ikoreshwa mu kugari n'ifu no gucurika inzoga zo mu gihugu, kandi imbuto zavuguruwe ubu zitanga umusaruro wikubye kabiri kurusha izo mu gihugu za kera. Ni igihingwa cy'agaciro ku mutekano w'ibiribwa no kwihangana imihindagurikire y'ikirere uko imvura igenda idahagarara. Inyoni ni zo zitera gutakaza umusaruro mbere yo gusarura, bityo imirima ikeneye kurindwa hafi y'isarura."
+    },
     regions: { en: 'Bugesera, Kirehe, Ngoma, Nyagatare, Gatsibo', rw: 'Bugesera, Kirehe, Ngoma, Nyagatare, Gatsibo' },
     season: {
       en: 'Season A: plant Oct (harvest Jan-Feb). Drought-tolerant — reliable in dry eastern zones.',
@@ -250,6 +290,10 @@ AS.CROP_GUIDES = [
   {
     id: 'groundnut', emoji: '🥜',
     name: { en: 'Groundnuts', rw: 'Ubunyobwa' },
+    overview: {
+      en: "Groundnuts are a nutritious legume grown across Rwanda's warmer eastern and northern areas, valued both as food and as a cash crop. They are rich in protein and oil, eaten as a sauce, a snack or roasted, and the leftover haulm feeds animals. Like beans they add nitrogen to the soil, so they fit well in rotation with cereals. The greatest danger is aflatoxin, a toxin that grows when nuts are dried on bare ground or stored damp, so always dry on tarps and store in shell.",
+      rw: "Ubunyobwa ni ikinyamisogwe gifite intungamubiri gihingwa mu bice bishyuha byo mu Burasirazuba n'Amajyaruguru y'u Rwanda, bufite agaciro nk'ikiribwa n'igicuruzwa. Bukungahaye kuri poroteyine n'amavuta, buribwa nka soso, nk'ikiribwa cyoroheje cyangwa gitwitswe, kandi ibisigazwa bigaburirwa amatungo. Nk'ibishyimbo, ubunyobwa bwongera azote mu butaka, bityo bujyana neza no gusimburanya n'ibinyampeke. Akaga kanini ni aflatoxin, uburozi bukura iyo ubunyobwa bumishijwe ku butaka cyangwa bubitswe butose, bityo buri gihe ubumure ku bitambaro kandi ububike mu bishishwa."
+    },
     regions: { en: 'Kayonza, Ngoma, Kirehe, Bugesera, Nyagatare, Gatsibo', rw: 'Kayonza, Ngoma, Kirehe, Bugesera, Nyagatare, Gatsibo' },
     season: {
       en: 'Season A: plant with first effective rains (Oct). Season B: Feb-Mar. Needs 90-120 days to mature.',
@@ -275,6 +319,10 @@ AS.CROP_GUIDES = [
   {
     id: 'sweetpotato', emoji: '🍠',
     name: { en: 'Sweet Potato', rw: 'Ibijumba' },
+    overview: {
+      en: "Sweet potato is a fast-growing, low-input root crop that matures in about four months and gives reliable food across Rwanda. It is easy to grow, needs little fertilizer, and produces well even on poor soils, which makes it a dependable food-security crop. The orange-fleshed varieties (OFSP) are especially valuable because they are rich in vitamin A and help fight child malnutrition. Vines are saved from one season to the next, and the roots store better if handled gently and kept cool.",
+      rw: "Ibijumba ni igihingwa cy'imizi gikura vuba, gitagikeneye ibikoresho byinshi, gikura mu mesi nka ane kandi gitanga ibiribwa byizewe mu Rwanda hose. Biroroshye guhinga, ntibikeneye ifumbire nyinshi, kandi bitanga umusaruro mwiza n'ubwo byaba mu butaka butaboneye, bigatuma biba igihingwa cyizewe ku mutekano w'ibiribwa. Ubwoko bw'umuhondo (OFSP) bufite agaciro by'umwihariko kubera ko bukungahaye kuri vitamini A kandi bufasha kurwanya imirire mibi ku bana. Ibimera bibikwa kuva mu gihembwe kimwe kujya mu kindi, kandi imizi ibika neza niba ikozweho witonze igashyirwa ahakonje."
+    },
     regions: { en: 'Gisagara, Nyaruguru, Huye, Bugesera, Gicumbi — grown countrywide', rw: 'Gisagara, Nyaruguru, Huye, Bugesera, Gicumbi — bihingwa mu gihugu hose' },
     season: {
       en: 'Plant at onset of rains (Sep-Oct or Feb-Mar). Harvest 3.5-5 months later. Orange-fleshed types fight vitamin A deficiency.',

@@ -401,6 +401,8 @@ AS.renderAdmin = function (container, app) {
         <label>${tr('admin_api_url')}<input id="pv_url" value="${esc(p.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></label>
         <label>${tr('admin_api_key')}<input id="pv_key" type="password" value="${esc(p.apiKey)}"></label>
         <label class="check"><input id="pv_req" type="checkbox" ${p.requireRemote ? 'checked' : ''}> ${tr('admin_require_remote')}</label>
+        <label class="check"><input id="pv_res" type="checkbox" ${p.researchOnline ? 'checked' : ''}> ${tr('admin_research_online')}</label>
+        <p class="progress-note">${tr('admin_research_hint')}</p>
         <p class="progress-note">${tr('admin_provider_hint')}</p>
         <div class="form-row">
           <button class="btn btn-primary sm" id="pv_save">${tr('admin_save')}</button>
@@ -417,7 +419,8 @@ AS.renderAdmin = function (container, app) {
           model: body.querySelector('#pv_model').value,
           apiUrl: body.querySelector('#pv_url').value.trim(),
           apiKey: body.querySelector('#pv_key').value,
-          requireRemote: body.querySelector('#pv_req').checked
+          requireRemote: body.querySelector('#pv_req').checked,
+          researchOnline: body.querySelector('#pv_res').checked
         }
       })
       await load()
