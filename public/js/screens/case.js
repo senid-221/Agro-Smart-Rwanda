@@ -52,7 +52,7 @@ AS.renderCase = function (container, app, caseId) {
         <div class="alert-banner">🚨 <b>${tr('case_emergency')}</b><br><span>${esc(d.emergency.reason || '')}</span></div>` : ''}
 
       <div class="card">
-        <div class="section-title" style="margin:0 0 2px">${tr('case_case')} #${c.id} — ${esc(c.crop || '')}</div>
+        <div class="section-title" style="margin:0 0 6px">${tr('case_case')} #${c.id} — ${esc(c.crop || '')}</div>
         <div class="progress-note">${esc(bits.join(' · '))} · ${esc(c.status || '')}</div>
         <div style="margin-top:8px">${esc(c.symptoms || '')}</div>
       </div>

@@ -42,7 +42,7 @@ AS.renderAssistant = function (container, app) {
         <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
       </div>
     </div>
-    <p class="progress-note" style="margin:2px 0 10px">${tr('assistant_sub')}</p>
+    <p class="progress-note" style="margin:6px 0 10px">${tr('assistant_sub')}</p>
 
     <div class="card" id="caseBanner" hidden style="padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;justify-content:space-between">
       <span id="caseText" class="progress-note" style="margin:0"></span>

@@ -330,14 +330,6 @@ AS.renderSettings = function (container, app) {
       <span class="arrow">›</span>
     </div>` : ''}
 
-    <div class="setting-row">
-      <div>
-        <div class="label"><img class="ico" src="img/user.png" alt=""> ${tr('your_name')}</div>
-        <div class="desc">${tr('settings_name_desc')}</div>
-      </div>
-      <input class="name-input" id="nameInput" value="${esc(app.name || '')}" placeholder="${tr('your_name')}" />
-    </div>
-
     <div class="setting-row" id="installRow" style="cursor:pointer">
       <div>
         <div class="label"><img class="ico" src="img/download.png" alt=""> ${tr('settings_install')}</div>
@@ -382,7 +374,7 @@ AS.renderSettings = function (container, app) {
   `
 
   const nameInput = container.querySelector('#nameInput')
-  nameInput.onchange = () => app.setName(nameInput.value.trim())
+  if (nameInput) nameInput.onchange = () => app.setName(nameInput.value.trim())
   container.querySelector('#dashRow').onclick = () => app.go('dashboard')
   if (isAdmin) container.querySelector('#adminRow').onclick = () => app.go('admin')
   container.querySelector('#installRow').onclick = async () => {

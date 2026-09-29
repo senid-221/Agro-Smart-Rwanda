@@ -11,7 +11,7 @@ AS.renderDashboard = function (container, app) {
 
   container.innerHTML = `
     <div class="section-title">${tr('dash_title')}</div>
-    <p class="progress-note" style="margin:-6px 0 12px">${hello} 👋</p>
+    <p class="progress-note" style="margin:6px 0 12px">${hello} 👋</p>
 
     <div class="stat-grid">
       <div class="stat-card"><span class="stat-n" id="stScans">0</span><span class="stat-l">${tr('dash_scans')}</span></div>

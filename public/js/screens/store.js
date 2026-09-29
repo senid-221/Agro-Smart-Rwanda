@@ -31,7 +31,7 @@ AS.renderStore = function (container, app) {
         <img src="img/cart.png" alt=""><span class="cart-badge" id="cartBadge">0</span>
       </button>
     </div>
-    <p class="progress-note" style="margin:2px 0 10px">${tr('store_sub')}</p>
+    <p class="progress-note" style="margin:6px 0 12px">${tr('store_sub')}</p>
     <input class="store-search" id="storeSearch" placeholder="🔍 ${tr('store_search')}" />
     <div class="chip-row store-chips" id="storeChips"></div>
     <div class="prod-grid" id="prodGrid"></div>
