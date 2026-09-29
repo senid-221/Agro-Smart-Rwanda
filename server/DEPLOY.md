@@ -1,4 +1,4 @@
-# Deploy AgroSmart Rwanda on a Hostinger VPS
+# Deploy AgroSmart Rwanda (Render or Hostinger VPS)
 
 This is the **real** production stack:
 
@@ -9,6 +9,43 @@ This is the **real** production stack:
 - **pm2** keeps the app running; **nginx** terminates TLS and reverse-proxies to Node.
 
 The app is **online-only**: data, AI and admin all require internet. The service worker only caches the app shell for fast loads and never caches `/api/`.
+
+---
+
+## Render (fastest — Node + Neon, no VPS)
+
+Render runs the Node backend **and** serves the static frontend same-origin, so
+there is no CORS or `API_BASE` setup. A `render.yaml` blueprint is included at the
+repo root.
+
+1. **Neon**: create a project, copy the **pooled** connection string
+   (`…-pooler.…neon.tech/…?sslmode=require`).
+2. **Google (optional)**: in Google Cloud Console create an OAuth client of type
+   *Web application*; add your Render URL (e.g. `https://agrosmart-rwanda.onrender.com`)
+   to *Authorized JavaScript origins*. Copy the **Client ID**. Leave blank to run
+   email + password only.
+3. **Render** → *New → Blueprint* → connect the GitHub repo
+   (`senid-221/Agro-Smart-Rwanda`). Render reads `render.yaml`.
+4. Fill the `sync:false` env vars when prompted:
+   - `DATABASE_URL` = the Neon pooled string
+   - `JWT_SECRET` = output of `openssl rand -hex 32`
+   - `GOOGLE_CLIENT_ID` = your Google OAuth web client ID (optional)
+   - `OPENAI_API_KEY` = your key (optional; enables remote AI)
+   - `TAVILY_API_KEY` = your key (optional; enables live Crop Doctor research)
+   - `ADMIN_EMAIL` + `ADMIN_PASSWORD` (≥ 8 chars) = the admin to auto-create on boot
+5. **Deploy**. On boot the server runs `migrate`, seeds the catalog, and ensures
+   the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` — no shell needed.
+6. Open the Render URL → `/api/health` returns `{"ok":true}` → log in with the
+   admin email + password (or Google).
+
+Build/start used by the blueprint (Root Directory = repo root):
+`build: cd server && npm install` · `start: node server/src/index.js`.
+
+> Free-tier services spin down after idle; the first request may take ~30s to wake.
+> To update: `git push` — Render redeploys automatically. Bump `CACHE` in
+> `public/sw.js` when you ship new client files.
+
+The rest of this document covers the alternative **Hostinger VPS** deployment.
 
 ---
 

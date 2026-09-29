@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: agrosmart-rwanda
+    runtime: node
+    plan: free
+    region: oregon
+    # Root directory is the repo root so BOTH server/ and public/ are deployed.
+    # The Express app serves the API (/api) and the static frontend same-origin,
+    # so no CORS or API_BASE changes are needed.
+    buildCommand: cd server && npm install
+    startCommand: node server/src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically; the app reads process.env.PORT.
+      # Neon pooled connection string (…-pooler.…neon.tech/…?sslmode=require).
+      - key: DATABASE_URL
+        sync: false
+      # openssl rand -hex 32
+      - key: JWT_SECRET
+        sync: false
+      # Google Identity Services OAuth Web client ID (public value).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_VISION_MODEL
+        value: gpt-4o-mini
+      - key: TAVILY_API_KEY
+        sync: false
+      # Admin auto-created on boot from these (email + password >= 8 chars).
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Admin

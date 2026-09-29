@@ -53,9 +53,13 @@ async function main() {
   console.log(`✔ catalog seeded (${cat.products} products, ${cat.categories} categories) — nothing removed`)
   await seedSingletons()
   console.log('✔ theme + provider seeded')
-  console.log('→ next: create an administrator with `npm run create-admin <nationalId> <phone> <password> [name]`')
+  console.log('→ next: create an administrator with `npm run create-admin <email> <password> [name]`')
   await pool.end()
 }
 
-main().catch(err => { console.error('seed failed:', err); process.exit(1) })
+module.exports = { seedCatalog, seedSingletons }
+
+if (require.main === module) {
+  main().catch(err => { console.error('seed failed:', err); process.exit(1) })
+}
 

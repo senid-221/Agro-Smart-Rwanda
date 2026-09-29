@@ -6,12 +6,14 @@ const fs = require('fs')
 const config = require('./config')
 const { migrate, pool } = require('./db')
 const { attach } = require('./middleware/auth')
+const { ensureAdminFromEnv } = require('./adminBootstrap')
 
 const authRoutes = require('./routes/auth')
 const catalogRoutes = require('./routes/catalog')
 const ordersRoutes = require('./routes/orders')
 const aiRoutes = require('./routes/ai')
 const adminRoutes = require('./routes/admin')
+const { seedCatalog, seedSingletons } = require('./seed')
 
 const app = express()
 
@@ -54,6 +56,12 @@ async function start() {
   try {
     await migrate()
     console.log('✔ database schema ready')
+    // Idempotent: ON CONFLICT DO NOTHING, so re-boots never clobber admin edits.
+    await seedCatalog()
+    await seedSingletons()
+    console.log('✔ catalog + theme + provider seeded')
+    const adminEmail = await ensureAdminFromEnv()
+    if (adminEmail) console.log('✔ administrator ensured from env:', adminEmail)
   } catch (e) {
     console.error('⚠ could not reach PostgreSQL — start it and check .env. Error:', e.message)
   }
