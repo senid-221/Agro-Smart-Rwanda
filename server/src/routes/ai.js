@@ -10,6 +10,12 @@ const { allProducts, providerData } = require('./catalog')
 
 const router = express.Router()
 
+// Upstream error detail (HTTP status + OpenAI reason) is useful for debugging but
+// can contain the OpenAI project id, so only send it to clients outside production.
+// It is always logged server-side regardless.
+const IS_PROD = process.env.NODE_ENV === 'production'
+const diagDetail = (err) => (IS_PROD ? '' : (err && err.detail) || '')
+
 // How much of the farmer's conversation we feed back to the model each turn.
 const HISTORY_TURNS = 20
 const MAX_FINDINGS = 6000
@@ -203,7 +209,7 @@ router.post('/chat', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.detail || '',
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: diagDetail(err),
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'
@@ -239,7 +245,7 @@ router.post('/analyze', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[ai/analyze] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'vision_unavailable', code: err.code || 'upstream', detail: err.detail || '',
+      error: 'vision_unavailable', code: err.code || 'upstream', detail: diagDetail(err),
       message: lang === 'en'
         ? 'The photo could not be analysed right now. Please try again or describe the symptoms.'
         : 'Ifoto ntibashije gusesengurwa ubu. Ongera ugerageze cyangwa usobanure ibimenyetso.'
@@ -299,7 +305,7 @@ router.post('/cases/:id/followup', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.detail || '',
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: diagDetail(err),
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'
