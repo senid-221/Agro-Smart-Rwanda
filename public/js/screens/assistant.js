@@ -36,6 +36,32 @@ function plainText(t) {
     .replace(/^\s*\*\s+/gm, '')
 }
 
+// One conversation row. The Doctor gets an avatar on the left (ChatGPT-style);
+// the farmer's messages sit right-aligned in a filled bubble.
+function msgRow(who, text) {
+  const row = document.createElement('div')
+  row.className = 'msg ' + who
+  if (who === 'ai') {
+    const av = document.createElement('div')
+    av.className = 'msg-avatar'
+    av.textContent = '🩺'
+    row.appendChild(av)
+  }
+  const body = document.createElement('div')
+  body.className = 'msg-body'
+  body.textContent = who === 'ai' ? plainText(text) : text
+  row.appendChild(body)
+  return row
+}
+
+// Animated three-dot "the Doctor is typing" row.
+function typingRow() {
+  const row = msgRow('ai', '')
+  row.querySelector('.msg-body').innerHTML =
+    '<span class="typing"><span></span><span></span><span></span></span>'
+  return row
+}
+
 AS.renderAssistant = function (container, app) {
   const tr = app.t()
   const lang = app.lang === 'en' ? 'en' : 'rw'
@@ -46,38 +72,39 @@ AS.renderAssistant = function (container, app) {
     .join('')
 
   container.innerHTML = `
-    <div class="store-head">
-      <div class="section-title" style="margin:0">${tr('assistant_title')} 🩺</div>
-      <div style="display:flex;gap:6px">
-        <button class="cart-btn" id="clearBtn" aria-label="${tr('assistant_clear')}" title="${tr('assistant_clear')}">🗑️</button>
-        <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
+    <div class="chat-screen">
+      <div class="chat-top">
+        <div class="store-head">
+          <div class="section-title" style="margin:0">${tr('assistant_title')} 🩺</div>
+          <div style="display:flex;gap:6px">
+            <button class="cart-btn" id="clearBtn" aria-label="${tr('assistant_clear')}" title="${tr('assistant_clear')}">🗑️</button>
+            <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
+          </div>
+        </div>
+        <div class="card policy-card" id="howCard" hidden>
+          <div class="label" style="font-weight:700;margin-bottom:6px">${tr('assistant_how')}</div>
+          <ul class="policy-list">${rulesHtml}</ul>
+        </div>
+        <div class="card" id="caseBanner" hidden style="padding:8px 10px;display:flex;align-items:center;gap:8px;justify-content:space-between">
+          <span id="caseText" class="progress-note" style="margin:0"></span>
+          <span style="display:flex;gap:6px">
+            <button class="chip" id="viewCaseBtn" style="margin:0">${tr('assistant_view_case')}</button>
+            <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
+          </span>
+        </div>
       </div>
-    </div>
-    <p class="progress-note" style="margin:6px 0 10px">${tr('assistant_sub')}</p>
 
-    <div class="card" id="caseBanner" hidden style="padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;justify-content:space-between">
-      <span id="caseText" class="progress-note" style="margin:0"></span>
-      <span style="display:flex;gap:6px">
-        <button class="chip" id="viewCaseBtn" style="margin:0">${tr('assistant_view_case')}</button>
-        <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
-      </span>
-    </div>
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chip-row chat-sugg" id="suggChips"></div>
+      <div class="chip-row" id="followChips" hidden></div>
 
-    <div class="card policy-card" id="howCard" hidden>
-      <div class="label" style="font-weight:700;margin-bottom:6px">${tr('assistant_how')}</div>
-      <ul class="policy-list">${rulesHtml}</ul>
+      <div class="chat-composer">
+        ${isRemote ? `<button class="chat-icon-btn" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
+        <input class="chat-field" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
+        <button class="chat-send-btn" id="chatSend">${tr('assistant_send')}</button>
+      </div>
+      ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
     </div>
-
-    <div class="chat-log" id="chatLog"></div>
-    <div class="chip-row" id="suggChips"></div>
-    <div class="chip-row" id="followChips" hidden></div>
-
-    <div class="chat-input-row">
-      ${isRemote ? `<button class="btn btn-outline chat-send" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
-      <input class="store-search" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
-      <button class="btn btn-primary chat-send" id="chatSend">${tr('assistant_send')}</button>
-    </div>
-    ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
   `
 
   const log = container.querySelector('#chatLog')
@@ -94,12 +121,7 @@ AS.renderAssistant = function (container, app) {
 
   function drawLog() {
     log.innerHTML = ''
-    chatLog.forEach(m => {
-      const b = document.createElement('div')
-      b.className = 'bubble ' + m.who
-      b.textContent = m.who === 'ai' ? plainText(m.text) : m.text
-      log.appendChild(b)
-    })
+    chatLog.forEach(m => log.appendChild(msgRow(m.who, m.text)))
     log.scrollTop = log.scrollHeight
     chips.style.display = chatLog.length ? 'none' : ''
     drawFollowUps()
@@ -145,9 +167,7 @@ AS.renderAssistant = function (container, app) {
   })
 
   async function loadHistory() {
-    const note = document.createElement('div')
-    note.className = 'bubble ai'
-    note.textContent = tr('assistant_loading')
+    const note = typingRow()
     log.appendChild(note)
     const res = await AS.api.get('/ai/history')
     note.remove()
@@ -192,8 +212,7 @@ AS.renderAssistant = function (container, app) {
     const note = `${tr('assistant_followup')} ${label}`
     chatLog.push({ who: 'user', text: note })
     drawLog()
-    const typing = document.createElement('div')
-    typing.className = 'bubble ai'; typing.textContent = '…'
+    const typing = typingRow()
     log.appendChild(typing); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/cases/' + activeCase.id + '/followup', { note, statusChange, lang: app.lang })
     typing.remove()
@@ -201,13 +220,12 @@ AS.renderAssistant = function (container, app) {
     drawLog()
   }
 
-  // Photo → vision analysis → findings bubble, fed into the next chat turn.
+  // Photo → vision analysis → findings row, fed into the next chat turn.
   async function analyzePhoto(file) {
     if (!file) return
     let dataUrl
     try { dataUrl = await fileToDataUrl(file) } catch { alert(tr('assistant_vision_error')); return }
-    const busy = document.createElement('div')
-    busy.className = 'bubble ai'; busy.textContent = tr('assistant_analyzing')
+    const busy = typingRow()
     log.appendChild(busy); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/analyze', {
       dataUrl, lang: app.lang, cropHint: (activeCase && activeCase.crop) || '', caseId: activeCase ? activeCase.id : null
@@ -233,8 +251,7 @@ AS.renderAssistant = function (container, app) {
     chatLog.push({ who: 'user', text })
     drawLog()
     input.value = ''
-    const typing = document.createElement('div')
-    typing.className = 'bubble ai'; typing.textContent = '…'
+    const typing = typingRow()
     log.appendChild(typing); log.scrollTop = log.scrollHeight
     const ctx = Object.assign({}, chatCtx)
     if (activeCase) ctx.caseId = activeCase.id
