@@ -419,7 +419,7 @@ body {
 .bubble.ai { align-self: flex-start; background: var(--card); border: 1.5px solid var(--border); border-bottom-left-radius: 4px; }
 .chat-input-row { display: flex; gap: 8px; align-items: center; }
 .chat-input-row .store-search { margin-bottom: 0; flex: 1; }
-.chat-send { width: 46px; height: 42px; padding: 0; flex: none; }
+.chat-send { min-width: 56px; height: 42px; padding: 0 12px; flex: none; }
 .policy-card { margin-bottom: 10px; }
 .policy-list { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-soft); }
 .policy-list li { margin-bottom: 4px; }

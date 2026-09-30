@@ -25,6 +25,17 @@ function fileToDataUrl(file, maxSide = 1280) {
   })
 }
 
+// Strip markdown emphasis/heading/code symbols so AI replies render as clean
+// plain text even if the model slips and emits ** / # / backticks.
+function plainText(t) {
+  return String(t == null ? '' : t)
+    .replace(/\*\*/g, '')
+    .replace(/__+/g, '')
+    .replace(/`+/g, '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\s*\*\s+/gm, '')
+}
+
 AS.renderAssistant = function (container, app) {
   const tr = app.t()
   const lang = app.lang === 'en' ? 'en' : 'rw'
@@ -64,7 +75,7 @@ AS.renderAssistant = function (container, app) {
     <div class="chat-input-row">
       ${isRemote ? `<button class="btn btn-outline chat-send" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
       <input class="store-search" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
-      <button class="btn btn-primary chat-send" id="chatSend">→</button>
+      <button class="btn btn-primary chat-send" id="chatSend">${tr('assistant_send')}</button>
     </div>
     ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
   `
@@ -86,7 +97,7 @@ AS.renderAssistant = function (container, app) {
     chatLog.forEach(m => {
       const b = document.createElement('div')
       b.className = 'bubble ' + m.who
-      b.textContent = m.text
+      b.textContent = m.who === 'ai' ? plainText(m.text) : m.text
       log.appendChild(b)
     })
     log.scrollTop = log.scrollHeight

@@ -332,6 +332,7 @@ AS.T = {
   assistant_close_case: { en: 'Close case', rw: 'Funga ikibazo' },
   assistant_view_case: { en: 'Open case', rw: 'Fungura ikibazo' },
   assistant_photo: { en: 'Attach a crop photo', rw: 'Ongeraho ifoto y\'igihingwa' },
+  assistant_send: { en: 'Send', rw: 'Ohereza' },
   assistant_analyzing: { en: 'Analysing your photo…', rw: 'Gusesengura ifoto yawe…' },
   assistant_photo_findings: { en: 'Photo findings', rw: 'Ibyabonetse mu ifoto' },
   assistant_vision_error: { en: 'Could not analyse the photo. Please describe the symptoms or try a clearer, closer picture.', rw: 'Ntabwo ifoto yabashije gusesengurwa. Sobanura ibimenyetso cyangwa ongera ufate ifoto isobanutse yegereye.' },
