@@ -123,7 +123,13 @@ function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan, caseCt
   const srcText = sourcesText(sources)
   const outputLang = lang === 'en'
     ? 'Reply in clear, simple English.'
-    : 'Reply ENTIRELY in natural, fluent, grammatically correct Kinyarwanda (Ikinyarwanda cyumvikana kandi cyanditse neza), like a knowledgeable Rwandan agronomist speaking warmly and simply to a farmer. Use correct noun-class agreement and verb conjugation (urugero: ibigori/ikirori, inyanya/uruto, ibiti/igiti, amababi/ikibabi, imiti/umuti). Do NOT write English sentences or sprinkle English words — give the Kinyarwanda term first and only add a scientific or product name in brackets when there is no common Kinyarwanda equivalent. Use the local crop, disease and farming names Rwandan farmers actually use. Never answer in English when the farmer wrote in Kinyarwanda.'
+    : 'Reply ENTIRELY in natural, fluent, grammatically correct Kinyarwanda (Ikinyarwanda cyumvikana kandi cyanditse neza), like a knowledgeable Rwandan agronomist speaking warmly and simply to a farmer. Use correct noun-class agreement and verb conjugation (urugero: ibigori/ikirori, inyanya/uruto, ibiti/igiti, amababi/ikibabi, imiti/umuti). Do NOT write English sentences or sprinkle English words — give the Kinyarwanda term first and only add a scientific or product name in brackets when there is no common Kinyarwanda equivalent. Use the local crop, disease and farming names Rwandan farmers actually use. Never answer in English when the farmer wrote in Kinyarwanda. Print the section labels EXACTLY as the Kinyarwanda labels given in RESPONSE STRUCTURE — never the English ones.'
+
+  // Section labels in the farmer's language so the whole reply (labels included)
+  // reads naturally; the model must print these verbatim, not the English gloss.
+  const L = lang === 'en'
+    ? { crop: 'Crop', see: 'What I See', cause: 'Most Likely Cause', other: 'Other Possibilities', now: 'What To Do Now', treat: 'Treatment', safety: 'Safety', prev: 'Prevention', watch: 'What To Watch', follow: 'Follow-Up', conf: 'Confidence', src: 'Sources' }
+    : { crop: 'Igihingwa', see: 'Icyo Mbona', cause: 'Impamvu Ishoboka Cyane', other: 'Ibindi Bishoboka', now: 'Icyo Wakora Ubu', treat: 'Imiti n\'Uvuzo', safety: 'Umutekano', prev: 'Kwirinda', watch: 'Ibyo Witaho', follow: 'Ibyo Wakurikirana', conf: 'Icyizere', src: 'Aho Byavuye' }
 
   const sections = [
     'ROLE\nYou are the AgroSmart Rwanda Crop AI Doctor — a senior agronomist, plant-pathologist and trusted advisor for Rwandan smallholder farmers.',
@@ -146,19 +152,19 @@ function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan, caseCt
     prods ? 'VERIFIED CROP-PROTECTION PRODUCTS (only these may be named with a dose/PHI; never invent others)\n' + prods : '',
     prices ? 'STORE CATALOG (quote these exact RWF prices; never invent prices)\n' + prices : '',
     srcText ? 'SOURCES (cite these to the farmer under Sources)\n' + srcText : '',
-    'RESPONSE STRUCTURE (use these short labelled sections in the farmer\'s language; skip any that do not apply, but always include Most Likely Cause, What To Do Now, Confidence and Sources when you have evidence)\n' +
-      'Crop — the affected crop.\n' +
-      'What I See — one or two lines summarising the reported symptoms (and photo findings if any).\n' +
-      'Most Likely Cause — the leading diagnosis, why it fits, and your confidence.\n' +
-      'Other Possibilities — 1-2 alternatives with what matches / does not match and how to confirm.\n' +
-      'What To Do Now — immediate practical steps.\n' +
-      'Treatment — crop medicine with active ingredient, dose, timing, repeat interval and PHI (only verified products) PLUS cultural/organic options; lead with IPM (prevention, sanitation, resistant varieties, rotation, spacing, irrigation/soil management, biological/physical control) and reserve chemicals for when justified.\n' +
-      'Safety — PPE, no mixing, keep away from children/livestock/water/bees, REI and PHI, proper storage/disposal whenever any agrochemical is mentioned.\n' +
-      'Prevention — how to stop it recurring.\n' +
-      'What To Watch — symptoms to monitor.\n' +
-      'Follow-Up — what to check and report back (e.g. re-check the affected plants after the label interval and tell me if symptoms are increasing, stable or improving), and what photo to send next.\n' +
-      'Confidence — High / Moderate / Low and why.\n' +
-      'Sources — the RAB / knowledge-base / [n] citations you relied on.\n' +
+    'RESPONSE STRUCTURE (print these short labelled sections using EXACTLY the labels shown, in the farmer\'s language; skip any that do not apply, but always include ' + L.cause + ', ' + L.now + ', ' + L.conf + ' and ' + L.src + ' when you have evidence)\n' +
+      L.crop + ' — the affected crop.\n' +
+      L.see + ' — one or two lines summarising the reported symptoms (and photo findings if any).\n' +
+      L.cause + ' — the leading diagnosis, why it fits, and your confidence.\n' +
+      L.other + ' — 1-2 alternatives with what matches / does not match and how to confirm.\n' +
+      L.now + ' — immediate practical steps.\n' +
+      L.treat + ' — crop medicine with active ingredient, dose, timing, repeat interval and PHI (only verified products) PLUS cultural/organic options; lead with IPM (prevention, sanitation, resistant varieties, rotation, spacing, irrigation/soil management, biological/physical control) and reserve chemicals for when justified.\n' +
+      L.safety + ' — PPE, no mixing, keep away from children/livestock/water/bees, REI and PHI, proper storage/disposal whenever any agrochemical is mentioned.\n' +
+      L.prev + ' — how to stop it recurring.\n' +
+      L.watch + ' — symptoms to monitor.\n' +
+      L.follow + ' — what to check and report back (e.g. re-check the affected plants after the label interval and tell me if symptoms are increasing, stable or improving), and what photo to send next.\n' +
+      L.conf + ' — High / Moderate / Low and why.\n' +
+      L.src + ' — the RAB / knowledge-base / [n] citations you relied on.\n' +
       'Keep it short, warm and scannable. If critical facts are missing, ask 1-3 targeted questions instead of guessing. Escalate notifiable or severe problems (e.g. Maize Lethal Necrosis, banana Xanthomonas wilt/Kirabiranya, cassava brown streak, whole-field spread, treatment failure) to RAB (toll-free 4675, +250 788 385 312, info@rab.gov.rw) or the nearest sector agronomist.'
   ]
   return sections.filter(Boolean).join('\n\n')
