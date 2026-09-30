@@ -4,7 +4,6 @@ let chatCtx = {}
 let activeCase = null
 let pendingScan = ''
 
-const EMOJIS = ['😊', '👍', '', '', '🍅', '🥔', '', '', '🐛', '💧', '️', '️', '✅', '', '❓', '']
 
 // Downscale a picked photo to a JPEG data URL small enough to POST (<=8MB body).
 function fileToDataUrl(file, maxSide = 1280) {
@@ -128,13 +127,12 @@ AS.renderAssistant = function (container, app) {
         <div class="chip-row wa-follow" id="followChips" hidden></div>
       </div>
 
-      <div class="wa-emoji-tray" id="emojiTray" hidden></div>
       <div class="wa-composer">
-        <button class="wa-round" id="emojiBtn" aria-label="emoji">😊</button>
         <input class="wa-input" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
         ${isRemote ? `<button class="wa-round" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
         <button class="wa-send" id="chatSend" aria-label="${tr('assistant_send')}">🎤</button>
       </div>
+      <div class="wa-powered">Powered by IRAGUHA Vincent</div>
       ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
     </div>
   `
@@ -147,7 +145,6 @@ AS.renderAssistant = function (container, app) {
   const caseText = container.querySelector('#caseText')
   const status = container.querySelector('#waStatus')
   const sendBtn = container.querySelector('#chatSend')
-  const emojiTray = container.querySelector('#emojiTray')
 
   // Voice conversation state: mic → speech-to-text → auto-send → spoken reply.
   let recognition = null
@@ -218,15 +215,6 @@ AS.renderAssistant = function (container, app) {
 
   function stopListening() { if (recognition) { try { recognition.stop() } catch {} } }
   function stopSpeaking() { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); speaking = false; setStatus() }
-
-  EMOJIS.forEach(e => {
-    const b = document.createElement('button')
-    b.className = 'wa-emoji'
-    b.textContent = e
-    b.onclick = () => { input.value += e; input.focus(); syncSendIcon() }
-    emojiTray.appendChild(b)
-  })
-  container.querySelector('#emojiBtn').onclick = () => { emojiTray.hidden = !emojiTray.hidden }
 
   container.querySelector('#howBtn').onclick = () => {
     const card = container.querySelector('#howCard')
@@ -388,7 +376,6 @@ AS.renderAssistant = function (container, app) {
     drawLog()
     input.value = ''
     syncSendIcon()
-    emojiTray.hidden = true
     setTyping(true)
     const typingRowEl = typingRow()
     log.appendChild(typingRowEl); log.scrollTop = log.scrollHeight
