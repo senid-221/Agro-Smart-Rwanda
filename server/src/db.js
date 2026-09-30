@@ -62,7 +62,7 @@ async function migrate() {
 
 // Small helpers -------------------------------------------------------------
 // Resolves to the array of result rows (pg returns { rows, rowCount, ... }).
-const query = (sql, params) => pool.query(sql, params).then(r => r.rows)
+const query = (sql, params) => pool.query(sql, params).then(r => r.rows).catch(e => { e.message = e.message + ' :: ' + String(sql).replace(/\s+/g, ' ').slice(0, 220); throw e })
 
 // JSONB columns are already parsed into JS objects by node-pg; be defensive.
 function parseJson(value, fallback) {
