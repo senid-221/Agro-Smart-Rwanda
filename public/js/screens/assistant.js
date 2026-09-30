@@ -149,8 +149,75 @@ AS.renderAssistant = function (container, app) {
   const sendBtn = container.querySelector('#chatSend')
   const emojiTray = container.querySelector('#emojiTray')
 
-  const setTyping = on => { status.textContent = on ? tr('wa_typing') : tr('wa_online') }
-  const syncSendIcon = () => { sendBtn.textContent = input.value.trim() ? '➤' : '🎤' }
+  // Voice conversation state: mic → speech-to-text → auto-send → spoken reply.
+  let recognition = null
+  let recognizing = false
+  let speaking = false
+  let typing = false
+  let voiceMode = false
+
+  const setStatus = () => {
+    status.textContent = recognizing ? tr('wa_listening')
+      : typing ? tr('wa_typing')
+      : speaking ? tr('wa_speaking')
+      : tr('wa_online')
+  }
+  const setTyping = on => { typing = on; setStatus() }
+  const syncSendIcon = () => {
+    if (recognizing) { sendBtn.textContent = '⏹'; sendBtn.classList.add('listening'); return }
+    sendBtn.classList.remove('listening')
+    sendBtn.textContent = input.value.trim() ? '➤' : '🎤'
+  }
+
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(plainText(text))
+    u.lang = lang === 'en' ? 'en-US' : 'rw-RW'
+    const v = (window.speechSynthesis.getVoices() || [])
+      .find(x => x.lang && x.lang.toLowerCase().startsWith(lang === 'en' ? 'en' : 'rw'))
+    if (v) u.voice = v
+    u.onstart = () => { speaking = true; setStatus() }
+    u.onend = () => { speaking = false; setStatus() }
+    u.onerror = () => { speaking = false; setStatus() }
+    window.speechSynthesis.speak(u)
+  }
+
+  // Press-and-talk: capture the farmer's speech, fill the box, then send it and
+  // speak the Doctor's answer so the whole exchange is talking-to-talking.
+  function startListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { alert(tr('voice_unsupported')); return }
+    stopSpeaking()
+    recognition = new SR()
+    recognition.lang = lang === 'en' ? 'en-US' : 'rw-RW'
+    recognition.interimResults = true
+    recognition.continuous = false
+    recognition.onresult = e => {
+      let txt = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript
+      input.value = txt
+      syncSendIcon()
+    }
+    recognition.onend = () => {
+      recognizing = false
+      const t = input.value.trim()
+      input.value = ''
+      syncSendIcon(); setStatus()
+      if (t) send(t, true)
+    }
+    recognition.onerror = () => {
+      recognizing = false
+      syncSendIcon(); setStatus()
+    }
+    recognizing = true
+    voiceMode = true
+    syncSendIcon(); setStatus()
+    try { recognition.start() } catch { recognizing = false; syncSendIcon(); setStatus() }
+  }
+
+  function stopListening() { if (recognition) { try { recognition.stop() } catch {} } }
+  function stopSpeaking() { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); speaking = false; setStatus() }
 
   EMOJIS.forEach(e => {
     const b = document.createElement('button')
@@ -248,6 +315,7 @@ AS.renderAssistant = function (container, app) {
   }
 
   container.querySelector('#clearBtn').onclick = async () => {
+    stopListening(); stopSpeaking()
     await AS.api.del('/ai/history')
     chatLog = []
     chatCtx = {}
@@ -312,21 +380,23 @@ AS.renderAssistant = function (container, app) {
     photoInput.onchange = e => { analyzePhoto(e.target.files[0]); photoInput.value = '' }
   }
 
-  async function send(text) {
+  async function send(text, viaVoice) {
     if (!text.trim()) return
+    voiceMode = !!viaVoice
+    if (!voiceMode) stopSpeaking()
     chatLog.push({ who: 'user', text, at: Date.now(), read: false })
     drawLog()
     input.value = ''
     syncSendIcon()
     emojiTray.hidden = true
     setTyping(true)
-    const typing = typingRow()
-    log.appendChild(typing); log.scrollTop = log.scrollHeight
+    const typingRowEl = typingRow()
+    log.appendChild(typingRowEl); log.scrollTop = log.scrollHeight
     const ctx = Object.assign({}, chatCtx)
     if (activeCase) ctx.caseId = activeCase.id
     if (pendingScan) ctx.scan = pendingScan
     const res = await AS.api.post('/ai/chat', { message: text, lang: app.lang, ctx })
-    typing.remove(); setTyping(false)
+    typingRowEl.remove(); setTyping(false)
     chatCtx = res.ctx || chatCtx
     if (res && res.caseId && (!activeCase || activeCase.id !== res.caseId)) {
       activeCase = { id: res.caseId, crop: res.cropId || (activeCase && activeCase.crop) || '', status: 'monitoring', district: (activeCase && activeCase.district) || '' }
@@ -336,11 +406,16 @@ AS.renderAssistant = function (container, app) {
     chatLog.push({ who: 'ai', text: res.text, at: Date.now() })
     drawLog()
     drawCase()
+    if (voiceMode && res && res.text) speak(res.text)
   }
 
-  sendBtn.onclick = () => send(input.value)
+  sendBtn.onclick = () => {
+    if (recognizing) { stopListening(); return }
+    if (input.value.trim()) send(input.value, false)
+    else startListening()
+  }
   input.oninput = syncSendIcon
-  input.onkeydown = e => { if (e.key === 'Enter') send(input.value) }
+  input.onkeydown = e => { if (e.key === 'Enter') send(input.value, false) }
   syncSendIcon()
   loadHistory()
   loadCases()
