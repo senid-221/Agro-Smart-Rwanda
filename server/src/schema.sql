@@ -28,10 +28,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(16) NOT NULL DE
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 ALTER TABLE users ALTER COLUMN national_id   DROP NOT NULL;
 ALTER TABLE users ALTER COLUMN phone         DROP NOT NULL;
--- Unique per-identity indexes. Partial (exclude NULL/'') so legacy accounts with
--- no email/google_id, or several blank ones, never block index creation.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email)     WHERE email     IS NOT NULL AND email     <> '';
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id) WHERE google_id IS NOT NULL AND google_id <> '';
+-- Unique per-identity indexes (multiple NULLs allowed, so partial profiles are fine).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id);
 
 CREATE TABLE IF NOT EXISTS products (
   id      VARCHAR(64) PRIMARY KEY,
@@ -185,19 +184,6 @@ CREATE TABLE IF NOT EXISTS case_observations (
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Self-heal: databases whose case_observations table predates a column in the
--- CREATE above (IF NOT EXISTS never alters an existing table). Without `id` the
--- Doctor's `ORDER BY ... id` history query throws 42703 and every disease/case
--- question fails. Each ADD COLUMN IF NOT EXISTS is a safe no-op when present.
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS id            SERIAL;
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS case_id       INT;
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS user_id       INT;
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS kind          VARCHAR(16)  NOT NULL DEFAULT 'report';
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS note          TEXT         NOT NULL DEFAULT '';
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS images        JSONB        NOT NULL DEFAULT '[]';
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS status_change VARCHAR(16)  NOT NULL DEFAULT '';
-ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW();
-
 -- Research provenance: what evidence backed a recommendation, and how reliable.
 CREATE TABLE IF NOT EXISTS research_records (
   id         SERIAL PRIMARY KEY,
@@ -232,27 +218,6 @@ CREATE TABLE IF NOT EXISTS ai_products (
   verified_at       TIMESTAMPTZ,
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-
--- Self-heal: an ai_products table created before `id` existed makes the Doctor's
--- `ORDER BY verified_at DESC NULLS LAST, id ASC` query throw 42703, breaking every
--- crop-specific question. ADD COLUMN IF NOT EXISTS is a safe no-op when present.
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS id                VARCHAR(64);
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS name              VARCHAR(160) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS name_en           VARCHAR(160) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS active_ingredient VARCHAR(160) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS type              VARCHAR(32)  NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS target_crop       VARCHAR(64)  NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS target_problem    VARCHAR(160) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS application       TEXT         NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS dose              VARCHAR(120) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS phi               VARCHAR(40)  NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS rei               VARCHAR(40)  NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS resistance_group  VARCHAR(40)  NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS registration      VARCHAR(120) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS safety            TEXT         NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS source            VARCHAR(200) NOT NULL DEFAULT '';
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS verified_at       TIMESTAMPTZ;
-ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW();
 
 -- Indexes for the hot query paths (per-user orders/scans, catalog by category).
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);

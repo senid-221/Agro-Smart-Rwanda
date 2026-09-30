@@ -42,7 +42,7 @@ async function observationsFor(caseId, limit = 12) {
   if (!caseId) return []
   const rows = await query(
     `SELECT kind, note, images, status_change, created_at FROM (
-       SELECT kind, note, images, status_change, created_at
+       SELECT kind, note, images, status_change, created_at, id
        FROM case_observations WHERE case_id = $1
        ORDER BY created_at DESC, id DESC LIMIT $2
      ) t ORDER BY created_at ASC, id ASC`,
@@ -209,7 +209,7 @@ router.post('/chat', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.message || diagDetail(err),
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: diagDetail(err),
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'

@@ -14,55 +14,17 @@ const pool = new Pool(Object.assign({ max: 10 }, poolConfig))
 // pg throws on an idle-connection error; surface it instead of crashing.
 pool.on('error', err => console.error('Postgres pool error:', err.message))
 
-// Split a SQL script into individual statements, ignoring ';' that appear
-// inside $$-quoted PL/pgSQL bodies and stripping comment-only fragments.
-function splitStatements(sql) {
-  const out = []
-  let buf = ''
-  let inDollar = false
-  for (let i = 0; i < sql.length; i++) {
-    const c = sql[i]
-    if (c === '$' && sql[i + 1] === '$') { inDollar = !inDollar; buf += '$$'; i++; continue }
-    if (c === ';' && !inDollar) {
-      buf += c
-      const s = buf.trim()
-      if (s) out.push(s)
-      buf = ''
-      continue
-    }
-    buf += c
-  }
-  const tail = buf.trim()
-  if (tail) out.push(tail)
-  return out.filter(s => s.replace(/--.*$/gm, '').trim().length > 1)
-}
-
 async function migrate() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
-  // Fast path: run the whole file as one simple query so PL/pgSQL bodies (which
+  // Run the whole file as one simple query so PL/pgSQL function bodies (which
   // contain ';' and $$ quoting) are handled by Postgres, not a naive splitter.
-  try {
-    await pool.query(sql)
-    return
-  } catch (batchErr) {
-    // One bad statement (e.g. a legacy duplicate blocking a UNIQUE index) would
-    // otherwise roll back the whole batch and freeze the schema, silently
-    // leaving later ALTER TABLE ... ADD COLUMN migrations unapplied. Re-apply
-    // statement-by-statement so independent idempotent DDL still lands.
-    console.error('⚠ batch schema migrate failed, retrying per-statement:', batchErr.message)
-  }
-  for (const stmt of splitStatements(sql)) {
-    try {
-      await pool.query(stmt)
-    } catch (e) {
-      console.error('⚠ schema statement skipped:', e.message, '\n  ', stmt.slice(0, 140).replace(/\s+/g, ' '))
-    }
-  }
+  // All statements are idempotent (IF NOT EXISTS / OR REPLACE / DROP IF EXISTS).
+  await pool.query(sql)
 }
 
 // Small helpers -------------------------------------------------------------
 // Resolves to the array of result rows (pg returns { rows, rowCount, ... }).
-const query = (sql, params) => pool.query(sql, params).then(r => r.rows).catch(e => { e.message = e.message + ' :: ' + String(sql).replace(/\s+/g, ' ').slice(0, 220); throw e })
+const query = (sql, params) => pool.query(sql, params).then(r => r.rows)
 
 // JSONB columns are already parsed into JS objects by node-pg; be defensive.
 function parseJson(value, fallback) {
