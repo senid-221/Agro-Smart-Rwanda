@@ -233,6 +233,27 @@ CREATE TABLE IF NOT EXISTS ai_products (
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Self-heal: an ai_products table created before `id` existed makes the Doctor's
+-- `ORDER BY verified_at DESC NULLS LAST, id ASC` query throw 42703, breaking every
+-- crop-specific question. ADD COLUMN IF NOT EXISTS is a safe no-op when present.
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS id                VARCHAR(64);
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS name              VARCHAR(160) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS name_en           VARCHAR(160) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS active_ingredient VARCHAR(160) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS type              VARCHAR(32)  NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS target_crop       VARCHAR(64)  NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS target_problem    VARCHAR(160) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS application       TEXT         NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS dose              VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS phi               VARCHAR(40)  NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS rei               VARCHAR(40)  NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS resistance_group  VARCHAR(40)  NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS registration      VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS safety            TEXT         NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS source            VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS verified_at       TIMESTAMPTZ;
+ALTER TABLE ai_products ADD COLUMN IF NOT EXISTS created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW();
+
 -- Indexes for the hot query paths (per-user orders/scans, catalog by category).
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
