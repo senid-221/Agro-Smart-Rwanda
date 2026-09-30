@@ -377,6 +377,8 @@ body {
 }
 .prod-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .prod-thumb.small { width: 44px; height: 44px; flex: 0 0 44px; margin-bottom: 0; border-radius: 8px; }
+#prodDetail .prod-thumb { height: 180px; }
+#prodDetail .prod-emoji { font-size: 56px; }
 .prod-emoji { font-size: 30px; line-height: 1.2; }
 .prod-emoji.small, .prod-thumb.small .prod-emoji { font-size: 22px; }
 .prod-name { font-size: 12.5px; font-weight: 700; color: var(--text); }
