@@ -128,7 +128,7 @@ AS.renderAssistant = function (container, app) {
       </div>
 
       <div class="wa-composer">
-        <input class="wa-input" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
+        <textarea class="wa-input" id="chatInput" rows="1" placeholder="${tr('assistant_placeholder')}"></textarea>
         ${isRemote ? `<button class="wa-round" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
         <button class="wa-send" id="chatSend" aria-label="${tr('assistant_send')}">🎤</button>
       </div>
@@ -165,6 +165,11 @@ AS.renderAssistant = function (container, app) {
     sendBtn.classList.remove('listening')
     sendBtn.textContent = input.value.trim() ? '➤' : '🎤'
   }
+  // Grow the composer box as the farmer types multi-line messages, up to a cap.
+  const autoGrow = () => {
+    input.style.height = 'auto'
+    input.style.height = Math.min(input.scrollHeight, 132) + 'px'
+  }
 
   function speak(text) {
     if (!('speechSynthesis' in window)) return
@@ -195,12 +200,13 @@ AS.renderAssistant = function (container, app) {
       for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript
       input.value = txt
       syncSendIcon()
+      autoGrow()
     }
     recognition.onend = () => {
       recognizing = false
       const t = input.value.trim()
       input.value = ''
-      syncSendIcon(); setStatus()
+      syncSendIcon(); autoGrow(); setStatus()
       if (t) send(t, true)
     }
     recognition.onerror = () => {
@@ -368,6 +374,7 @@ AS.renderAssistant = function (container, app) {
     drawLog()
     input.value = ''
     syncSendIcon()
+    autoGrow()
     setTyping(true)
     const typingRowEl = typingRow()
     log.appendChild(typingRowEl); log.scrollTop = log.scrollHeight
@@ -393,8 +400,7 @@ AS.renderAssistant = function (container, app) {
     if (input.value.trim()) send(input.value, false)
     else startListening()
   }
-  input.oninput = syncSendIcon
-  input.onkeydown = e => { if (e.key === 'Enter') send(input.value, false) }
+  input.oninput = () => { syncSendIcon(); autoGrow() }
   syncSendIcon()
   loadHistory()
   loadCases()
