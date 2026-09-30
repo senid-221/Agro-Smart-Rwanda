@@ -4,6 +4,8 @@ let chatCtx = {}
 let activeCase = null
 let pendingScan = ''
 
+const EMOJIS = ['😊', '👍', '', '', '🍅', '🥔', '', '', '🐛', '💧', '️', '️', '✅', '', '❓', '']
+
 // Downscale a picked photo to a JPEG data URL small enough to POST (<=8MB body).
 function fileToDataUrl(file, maxSide = 1280) {
   return new Promise((resolve, reject) => {
@@ -36,29 +38,52 @@ function plainText(t) {
     .replace(/^\s*\*\s+/gm, '')
 }
 
-// One conversation row. The Doctor gets an avatar on the left (ChatGPT-style);
-// the farmer's messages sit right-aligned in a filled bubble.
-function msgRow(who, text) {
+const fmtTime = at => {
+  const d = at ? new Date(at) : new Date()
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+const dayKey = at => (at ? new Date(at) : new Date()).toDateString()
+
+// WhatsApp-style bubble. Outgoing (farmer) sits right with read-receipt ticks;
+// incoming (Doctor) sits left. `read` flips the ticks blue once the Doctor answers.
+function waRow(m, tr) {
   const row = document.createElement('div')
-  row.className = 'msg ' + who
-  if (who === 'ai') {
-    const av = document.createElement('div')
-    av.className = 'msg-avatar'
-    av.textContent = '🩺'
-    row.appendChild(av)
+  row.className = 'wa-msg ' + (m.who === 'user' ? 'out' : 'in')
+  const bubble = document.createElement('div')
+  bubble.className = 'wa-bubble'
+  const text = document.createElement('div')
+  text.className = 'wa-text'
+  text.textContent = m.who === 'ai' ? plainText(m.text) : m.text
+  bubble.appendChild(text)
+  const meta = document.createElement('span')
+  meta.className = 'wa-meta'
+  meta.textContent = fmtTime(m.at)
+  if (m.who === 'user') {
+    const ticks = document.createElement('span')
+    ticks.className = 'wa-ticks' + (m.read ? ' read' : '')
+    ticks.textContent = '✓✓'
+    meta.appendChild(ticks)
   }
-  const body = document.createElement('div')
-  body.className = 'msg-body'
-  body.textContent = who === 'ai' ? plainText(text) : text
-  row.appendChild(body)
+  bubble.appendChild(meta)
+  row.appendChild(bubble)
   return row
 }
 
-// Animated three-dot "the Doctor is typing" row.
+function waDay(label) {
+  const d = document.createElement('div')
+  d.className = 'wa-day'
+  d.textContent = label
+  return d
+}
+
+// Incoming bubble with the animated three-dot "typing" indicator.
 function typingRow() {
-  const row = msgRow('ai', '')
-  row.querySelector('.msg-body').innerHTML =
-    '<span class="typing"><span></span><span></span><span></span></span>'
+  const row = document.createElement('div')
+  row.className = 'wa-msg in'
+  const bubble = document.createElement('div')
+  bubble.className = 'wa-bubble'
+  bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>'
+  row.appendChild(bubble)
   return row
 }
 
@@ -72,36 +97,43 @@ AS.renderAssistant = function (container, app) {
     .join('')
 
   container.innerHTML = `
-    <div class="chat-screen">
-      <div class="chat-top">
-        <div class="store-head">
-          <div class="section-title" style="margin:0">${tr('assistant_title')} 🩺</div>
-          <div style="display:flex;gap:6px">
-            <button class="cart-btn" id="clearBtn" aria-label="${tr('assistant_clear')}" title="${tr('assistant_clear')}">🗑️</button>
-            <button class="cart-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
-          </div>
+    <div class="wa-screen">
+      <div class="wa-header">
+        <div class="wa-avatar">🩺</div>
+        <div class="wa-head-info">
+          <div class="wa-name">${tr('assistant_title')}</div>
+          <div class="wa-status" id="waStatus">${tr('wa_online')}</div>
         </div>
-        <div class="card policy-card" id="howCard" hidden>
-          <div class="label" style="font-weight:700;margin-bottom:6px">${tr('assistant_how')}</div>
-          <ul class="policy-list">${rulesHtml}</ul>
-        </div>
-        <div class="card" id="caseBanner" hidden style="padding:8px 10px;display:flex;align-items:center;gap:8px;justify-content:space-between">
-          <span id="caseText" class="progress-note" style="margin:0"></span>
-          <span style="display:flex;gap:6px">
-            <button class="chip" id="viewCaseBtn" style="margin:0">${tr('assistant_view_case')}</button>
-            <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
-          </span>
+        <div class="wa-head-actions">
+          <button class="wa-head-btn" id="clearBtn" aria-label="${tr('assistant_clear')}" title="${tr('assistant_clear')}">🗑️</button>
+          <button class="wa-head-btn" id="howBtn" aria-label="${tr('assistant_how')}"><img src="img/info.png" alt=""></button>
         </div>
       </div>
 
-      <div class="chat-log" id="chatLog"></div>
-      <div class="chip-row chat-sugg" id="suggChips"></div>
-      <div class="chip-row" id="followChips" hidden></div>
+      <div class="card policy-card wa-drop" id="howCard" hidden>
+        <div class="label" style="font-weight:700;margin-bottom:6px">${tr('assistant_how')}</div>
+        <ul class="policy-list">${rulesHtml}</ul>
+      </div>
+      <div class="card wa-drop" id="caseBanner" hidden style="padding:8px 10px;display:flex;align-items:center;gap:8px;justify-content:space-between">
+        <span id="caseText" class="progress-note" style="margin:0"></span>
+        <span style="display:flex;gap:6px">
+          <button class="chip" id="viewCaseBtn" style="margin:0">${tr('assistant_view_case')}</button>
+          <button class="chip" id="closeCaseBtn" style="margin:0">${tr('assistant_close_case')}</button>
+        </span>
+      </div>
 
-      <div class="chat-composer">
-        ${isRemote ? `<button class="chat-icon-btn" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
-        <input class="chat-field" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
-        <button class="chat-send-btn" id="chatSend">${tr('assistant_send')}</button>
+      <div class="wa-wall">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chip-row chat-sugg" id="suggChips"></div>
+        <div class="chip-row wa-follow" id="followChips" hidden></div>
+      </div>
+
+      <div class="wa-emoji-tray" id="emojiTray" hidden></div>
+      <div class="wa-composer">
+        <button class="wa-round" id="emojiBtn" aria-label="emoji">😊</button>
+        <input class="wa-input" id="chatInput" placeholder="${tr('assistant_placeholder')}" />
+        ${isRemote ? `<button class="wa-round" id="photoBtn" aria-label="${tr('assistant_photo')}" title="${tr('assistant_photo')}">📷</button>` : ''}
+        <button class="wa-send" id="chatSend" aria-label="${tr('assistant_send')}">🎤</button>
       </div>
       ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
     </div>
@@ -113,6 +145,21 @@ AS.renderAssistant = function (container, app) {
   const input = container.querySelector('#chatInput')
   const banner = container.querySelector('#caseBanner')
   const caseText = container.querySelector('#caseText')
+  const status = container.querySelector('#waStatus')
+  const sendBtn = container.querySelector('#chatSend')
+  const emojiTray = container.querySelector('#emojiTray')
+
+  const setTyping = on => { status.textContent = on ? tr('wa_typing') : tr('wa_online') }
+  const syncSendIcon = () => { sendBtn.textContent = input.value.trim() ? '➤' : '🎤' }
+
+  EMOJIS.forEach(e => {
+    const b = document.createElement('button')
+    b.className = 'wa-emoji'
+    b.textContent = e
+    b.onclick = () => { input.value += e; input.focus(); syncSendIcon() }
+    emojiTray.appendChild(b)
+  })
+  container.querySelector('#emojiBtn').onclick = () => { emojiTray.hidden = !emojiTray.hidden }
 
   container.querySelector('#howBtn').onclick = () => {
     const card = container.querySelector('#howCard')
@@ -121,7 +168,20 @@ AS.renderAssistant = function (container, app) {
 
   function drawLog() {
     log.innerHTML = ''
-    chatLog.forEach(m => log.appendChild(msgRow(m.who, m.text)))
+    let lastDay = ''
+    chatLog.forEach(m => {
+      const dk = dayKey(m.at)
+      if (dk !== lastDay) {
+        lastDay = dk
+        const d = new Date(m.at || Date.now())
+        const today = new Date().toDateString()
+        const yest = new Date(Date.now() - 864e5).toDateString()
+        const label = dk === today ? tr('wa_today') : dk === yest ? tr('wa_yesterday')
+          : d.toLocaleDateString(lang === 'rw' ? 'rw-RW' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        log.appendChild(waDay(label))
+      }
+      log.appendChild(waRow(m, tr))
+    })
     log.scrollTop = log.scrollHeight
     chips.style.display = chatLog.length ? 'none' : ''
     drawFollowUps()
@@ -172,7 +232,7 @@ AS.renderAssistant = function (container, app) {
     const res = await AS.api.get('/ai/history')
     note.remove()
     if (res && res.messages && res.messages.length) {
-      chatLog = res.messages.map(m => ({ who: m.role === 'user' ? 'user' : 'ai', text: m.content }))
+      chatLog = res.messages.map(m => ({ who: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.at, read: true }))
     }
     drawLog()
   }
@@ -210,32 +270,38 @@ AS.renderAssistant = function (container, app) {
   async function followUp(statusChange, label) {
     if (!activeCase) return
     const note = `${tr('assistant_followup')} ${label}`
-    chatLog.push({ who: 'user', text: note })
+    chatLog.push({ who: 'user', text: note, at: Date.now(), read: false })
     drawLog()
+    setTyping(true)
     const typing = typingRow()
     log.appendChild(typing); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/cases/' + activeCase.id + '/followup', { note, statusChange, lang: app.lang })
-    typing.remove()
-    chatLog.push({ who: 'ai', text: (res && res.text) || '' })
+    typing.remove(); setTyping(false)
+    markRead()
+    chatLog.push({ who: 'ai', text: (res && res.text) || '', at: Date.now() })
     drawLog()
   }
 
-  // Photo → vision analysis → findings row, fed into the next chat turn.
+  // Once the Doctor answers, earlier farmer messages count as read (blue ticks).
+  function markRead() { chatLog.forEach(m => { if (m.who === 'user') m.read = true }) }
+
+  // Photo → vision analysis → findings bubble, fed into the next chat turn.
   async function analyzePhoto(file) {
     if (!file) return
     let dataUrl
     try { dataUrl = await fileToDataUrl(file) } catch { alert(tr('assistant_vision_error')); return }
+    setTyping(true)
     const busy = typingRow()
     log.appendChild(busy); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/analyze', {
       dataUrl, lang: app.lang, cropHint: (activeCase && activeCase.crop) || '', caseId: activeCase ? activeCase.id : null
     })
-    busy.remove()
+    busy.remove(); setTyping(false)
     if (res && res.findings) {
       pendingScan = res.findings
-      chatLog.push({ who: 'ai', text: `📷 ${tr('assistant_photo_findings')}\n${res.findings}` })
+      chatLog.push({ who: 'ai', text: `📷 ${tr('assistant_photo_findings')}\n${res.findings}`, at: Date.now() })
     } else {
-      chatLog.push({ who: 'ai', text: tr('assistant_vision_error') })
+      chatLog.push({ who: 'ai', text: tr('assistant_vision_error'), at: Date.now() })
     }
     drawLog()
   }
@@ -248,28 +314,34 @@ AS.renderAssistant = function (container, app) {
 
   async function send(text) {
     if (!text.trim()) return
-    chatLog.push({ who: 'user', text })
+    chatLog.push({ who: 'user', text, at: Date.now(), read: false })
     drawLog()
     input.value = ''
+    syncSendIcon()
+    emojiTray.hidden = true
+    setTyping(true)
     const typing = typingRow()
     log.appendChild(typing); log.scrollTop = log.scrollHeight
     const ctx = Object.assign({}, chatCtx)
     if (activeCase) ctx.caseId = activeCase.id
     if (pendingScan) ctx.scan = pendingScan
     const res = await AS.api.post('/ai/chat', { message: text, lang: app.lang, ctx })
-    typing.remove()
+    typing.remove(); setTyping(false)
     chatCtx = res.ctx || chatCtx
     if (res && res.caseId && (!activeCase || activeCase.id !== res.caseId)) {
       activeCase = { id: res.caseId, crop: res.cropId || (activeCase && activeCase.crop) || '', status: 'monitoring', district: (activeCase && activeCase.district) || '' }
     }
     pendingScan = ''
-    chatLog.push({ who: 'ai', text: res.text })
+    markRead()
+    chatLog.push({ who: 'ai', text: res.text, at: Date.now() })
     drawLog()
     drawCase()
   }
 
-  container.querySelector('#chatSend').onclick = () => send(input.value)
+  sendBtn.onclick = () => send(input.value)
+  input.oninput = syncSendIcon
   input.onkeydown = e => { if (e.key === 'Enter') send(input.value) }
+  syncSendIcon()
   loadHistory()
   loadCases()
 }
