@@ -28,9 +28,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(16) NOT NULL DE
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 ALTER TABLE users ALTER COLUMN national_id   DROP NOT NULL;
 ALTER TABLE users ALTER COLUMN phone         DROP NOT NULL;
--- Unique per-identity indexes (multiple NULLs allowed, so partial profiles are fine).
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id);
+-- Unique per-identity indexes. Partial (exclude NULL/'') so legacy accounts with
+-- no email/google_id, or several blank ones, never block index creation.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email)     WHERE email     IS NOT NULL AND email     <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id) WHERE google_id IS NOT NULL AND google_id <> '';
 
 CREATE TABLE IF NOT EXISTS products (
   id      VARCHAR(64) PRIMARY KEY,
