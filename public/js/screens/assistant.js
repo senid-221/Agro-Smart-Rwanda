@@ -273,14 +273,6 @@ AS.renderAssistant = function (container, app) {
       })
   }
 
-  ;[tr('ai_sugg1'), tr('ai_sugg2'), tr('ai_sugg3')].forEach(s => {
-    const c = document.createElement('button')
-    c.className = 'chip'
-    c.textContent = s
-    c.onclick = () => send(s)
-    chips.appendChild(c)
-  })
-
   async function loadHistory() {
     const note = typingRow()
     log.appendChild(note)
