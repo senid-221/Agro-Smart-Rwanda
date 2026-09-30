@@ -209,7 +209,7 @@ router.post('/chat', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[ai] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
-      error: 'ai_unavailable', code: err.code || 'upstream', detail: diagDetail(err),
+      error: 'ai_unavailable', code: err.code || 'upstream', detail: err.message || diagDetail(err),
       message: lang === 'en'
         ? 'The AI service could not be reached. Please try again.'
         : 'Serivisi ya AI ntabwo yabashije kuboneka. Ongera ugerageze.'
