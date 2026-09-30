@@ -185,6 +185,19 @@ CREATE TABLE IF NOT EXISTS case_observations (
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Self-heal: databases whose case_observations table predates a column in the
+-- CREATE above (IF NOT EXISTS never alters an existing table). Without `id` the
+-- Doctor's `ORDER BY ... id` history query throws 42703 and every disease/case
+-- question fails. Each ADD COLUMN IF NOT EXISTS is a safe no-op when present.
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS id            SERIAL;
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS case_id       INT;
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS user_id       INT;
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS kind          VARCHAR(16)  NOT NULL DEFAULT 'report';
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS note          TEXT         NOT NULL DEFAULT '';
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS images        JSONB        NOT NULL DEFAULT '[]';
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS status_change VARCHAR(16)  NOT NULL DEFAULT '';
+ALTER TABLE case_observations ADD COLUMN IF NOT EXISTS created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW();
+
 -- Research provenance: what evidence backed a recommendation, and how reliable.
 CREATE TABLE IF NOT EXISTS research_records (
   id         SERIAL PRIMARY KEY,
