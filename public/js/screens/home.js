@@ -82,6 +82,29 @@ AS.renderHome = function (container, app) {
     </button>
 
     <div class="sec-head">
+      <span class="sec-title">${AS.esc(tr('home_tools'))}</span>
+    </div>
+    <p class="tools-sub">${AS.esc(tr('home_tools_d'))}</p>
+    <div class="tools-grid">
+      <button class="tool-card" data-go="assistant">
+        <span class="tc-ico doctor">${AS.icon('chat', 22)}</span>
+        <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_doctor'))}</span><span class="tc-desc">${AS.esc(tr('tool_doctor_d'))}</span></span>
+      </button>
+      <button class="tool-card" data-go="scan">
+        <span class="tc-ico scan">${AS.icon('scan', 22)}</span>
+        <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_scan'))}</span><span class="tc-desc">${AS.esc(tr('tool_scan_d'))}</span></span>
+      </button>
+      <button class="tool-card" data-go="weather">
+        <span class="tc-ico wx">${AS.icon('cloud', 22)}</span>
+        <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_weather'))}</span><span class="tc-desc">${AS.esc(tr('tool_weather_d'))}</span></span>
+      </button>
+      <button class="tool-card" data-go="community">
+        <span class="tc-ico community">${AS.icon('user', 22)}</span>
+        <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_community'))}</span><span class="tc-desc">${AS.esc(tr('tool_community_d'))}</span></span>
+      </button>
+    </div>
+
+    <div class="sec-head">
       <span class="sec-title">${AS.esc(tr('home_soil_status'))}</span>
       <button class="sec-link" id="soilLink">${AS.esc(tr('home_detailed_report'))}</button>
     </div>
@@ -156,6 +179,28 @@ AS.renderHome = function (container, app) {
       </button>
     </div>
 
+    <div class="sec-head">
+      <span class="sec-title">${AS.esc(tr('home_discover'))}</span>
+    </div>
+    <div class="discover">
+      <button class="disc-card" data-go="scan">
+        <span class="dc-ico">${AS.icon('scan', 20)}</span>
+        <span class="dc-body"><span class="dc-t">${AS.esc(tr('discover_scan_t'))}</span><span class="dc-d">${AS.esc(tr('discover_scan_d'))}</span></span>
+      </button>
+      <button class="disc-card" data-go="assistant">
+        <span class="dc-ico">${AS.icon('chat', 20)}</span>
+        <span class="dc-body"><span class="dc-t">${AS.esc(tr('discover_chat_t'))}</span><span class="dc-d">${AS.esc(tr('discover_chat_d'))}</span></span>
+      </button>
+      <button class="disc-card" data-go="weather">
+        <span class="dc-ico">${AS.icon('pin', 20)}</span>
+        <span class="dc-body"><span class="dc-t">${AS.esc(tr('discover_gps_t'))}</span><span class="dc-d">${AS.esc(tr('discover_gps_d'))}</span></span>
+      </button>
+      <button class="disc-card" data-go="expert">
+        <span class="dc-ico">${AS.icon('star', 20)}</span>
+        <span class="dc-body"><span class="dc-t">${AS.esc(tr('discover_expert_t'))}</span><span class="dc-d">${AS.esc(tr('discover_expert_d'))}</span></span>
+      </button>
+    </div>
+
     <div class="banner">
       <div class="bn-track" id="bnTrack">
         <div class="bn-slide tip-card"><b>${AS.esc(tr('home_tip'))}:</b> ${AS.esc(TIPS[lang === 'rw' ? 'rw' : 'en'][dayIndex])}</div>
@@ -191,7 +236,7 @@ AS.renderHome = function (container, app) {
 
   container.querySelector('#langToggle').onclick = () => app.setLang(lang === 'rw' ? 'en' : 'rw')
   container.querySelector('#avatarBtn').onclick = () => app.go('settings')
-  container.querySelector('#wxCard').onclick = () => app.go('settings')
+  container.querySelector('#wxCard').onclick = () => app.go('weather')
   container.querySelector('#soilLink').onclick = () => app.go('dashboard')
   container.querySelector('#viewAll').onclick = () => app.go('dashboard')
   container.querySelector('#insightCard').onclick = () => app.go('assistant')

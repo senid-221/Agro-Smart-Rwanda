@@ -219,9 +219,53 @@ CREATE TABLE IF NOT EXISTS ai_products (
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Community Q&A: real farmer posts + replies (moderatable by admins).
+CREATE TABLE IF NOT EXISTS community_posts (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author     VARCHAR(120) NOT NULL DEFAULT '',
+  district   VARCHAR(60)  NOT NULL DEFAULT '',
+  title      VARCHAR(160) NOT NULL DEFAULT '',
+  body       TEXT         NOT NULL DEFAULT '',
+  crop       VARCHAR(32)  NOT NULL DEFAULT '',
+  status     VARCHAR(12)  NOT NULL DEFAULT 'open'
+             CHECK (status IN ('open','answered','closed')),
+  hidden     BOOLEAN      NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS community_replies (
+  id         SERIAL PRIMARY KEY,
+  post_id    INT          NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author     VARCHAR(120) NOT NULL DEFAULT '',
+  body       TEXT         NOT NULL DEFAULT '',
+  helpful    INT          NOT NULL DEFAULT 0,
+  hidden     BOOLEAN      NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Expert Human Assistance: recorded subscription intent (no live charging).
+-- Plans: monthly = 10000 FRW, yearly = 100000 FRW, both auto-renewing.
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id         SERIAL PRIMARY KEY,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan       VARCHAR(16)  NOT NULL CHECK (plan IN ('monthly','yearly')),
+  amount     INT          NOT NULL DEFAULT 0,
+  currency   VARCHAR(8)   NOT NULL DEFAULT 'RWF',
+  status     VARCHAR(16)  NOT NULL DEFAULT 'pending'
+             CHECK (status IN ('pending','active','expired','cancelled')),
+  phone      VARCHAR(20)  NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for the hot query paths (per-user orders/scans, catalog by category).
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON community_posts (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_replies_post ON community_replies (post_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_cat ON products (cat);
 CREATE INDEX IF NOT EXISTS idx_pwreset_phone ON password_resets (phone, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_user ON ai_messages (user_id, created_at DESC);

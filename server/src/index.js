@@ -13,6 +13,7 @@ const catalogRoutes = require('./routes/catalog')
 const ordersRoutes = require('./routes/orders')
 const aiRoutes = require('./routes/ai')
 const adminRoutes = require('./routes/admin')
+const communityRoutes = require('./routes/community')
 const { seedCatalog, seedSingletons } = require('./seed')
 
 const app = express()
@@ -29,6 +30,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api', communityRoutes)
 app.use('/api', catalogRoutes)
 app.use('/api', ordersRoutes)
 

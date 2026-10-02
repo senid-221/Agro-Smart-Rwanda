@@ -44,6 +44,60 @@
     return AS.RW_DISTRICTS[0]
   }
 
+  // ---------- live GPS -> nearest Rwanda district ----------
+  // Haversine distance from the phone's real coordinates to each district capital.
+  function haversineKm(aLat, aLon, bLat, bLon) {
+    const R = 6371
+    const dLat = (bLat - aLat) * Math.PI / 180
+    const dLon = (bLon - aLon) * Math.PI / 180
+    const s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    return 2 * R * Math.asin(Math.sqrt(s))
+  }
+
+  AS.nearestDistrict = function (lat, lon) {
+    let best = AS.RW_DISTRICTS[0]
+    let bestKm = Infinity
+    for (const d of AS.RW_DISTRICTS) {
+      const km = haversineKm(lat, lon, d.lat, d.lon)
+      if (km < bestKm) { bestKm = km; best = d }
+    }
+    return { district: best, km: Math.round(bestKm) }
+  }
+
+  // Read the phone's live position and resolve the nearest district. Rejects when
+  // geolocation is unavailable or denied so callers can fall back to the manual
+  // district — we never guess a location the phone did not actually report.
+  AS.locateDistrict = function (opts) {
+    return new Promise(function (resolve, reject) {
+      if (!navigator.geolocation) return reject(new Error('no_geolocation'))
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          const lat = pos.coords.latitude
+          const lon = pos.coords.longitude
+          const near = AS.nearestDistrict(lat, lon)
+          resolve({ district: near.district, km: near.km, lat: lat, lon: lon, accuracy: Math.round(pos.coords.accuracy || 0) })
+        },
+        function (err) { reject(err) },
+        Object.assign({ enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }, opts || {})
+      )
+    })
+  }
+
+  // Locate via GPS and persist the resolved district (flagged gps:true) so every
+  // screen reads the farmer's real region. Returns the located district or null
+  // when GPS is denied/unavailable (caller keeps the manual district).
+  AS.useGpsDistrict = async function () {
+    try {
+      const loc = await AS.locateDistrict()
+      AS.savePrefs({ district: loc.district.id, gps: true, gpsKm: loc.km })
+      return loc
+    } catch (e) {
+      return null
+    }
+  }
+
   // ---------- per-crop soil / nutrient reference ----------
   // ph = the optimum range quoted in our own crop guides.
   // n/p/k = actual nutrient per season, calculated from the NPK blend rate in the guide
@@ -113,6 +167,21 @@
     if (!r.ok) throw new Error('weather_http_' + r.status)
     const j = await r.json()
     const cur = j.current || {}
+    const daily = j.daily || {}
+    const dDates = daily.time || []
+    const dMax = daily.temperature_2m_max || []
+    const dMin = daily.temperature_2m_min || []
+    const dRain = daily.precipitation_probability_max || []
+    const dCode = daily.weather_code || []
+    // 3-day forecast (iteganyagihe) as real per-day values from Open-Meteo.
+    const days = dDates.slice(0, 3).map((date, i) => ({
+      date: date,
+      tmax: Math.round(dMax[i]),
+      tmin: Math.round(dMin[i]),
+      rain: dRain[i] == null ? null : Math.round(dRain[i]),
+      code: dCode[i],
+      cond: AS.wmo(dCode[i])
+    }))
     const wx = {
       temp: Math.round(cur.temperature_2m),
       feels: Math.round(cur.apparent_temperature),
@@ -120,9 +189,10 @@
       wind: Math.round((cur.wind_speed_10m || 0) / 3.6 * 10) / 10, // km/h -> m/s
       code: cur.weather_code,
       cond: AS.wmo(cur.weather_code),
-      rainProb: (j.daily && j.daily.precipitation_probability_max || []).slice(0, 3),
-      tmax: (j.daily && j.daily.temperature_2m_max || [])[0],
-      tmin: (j.daily && j.daily.temperature_2m_min || [])[0],
+      rainProb: (daily.precipitation_probability_max || []).slice(0, 3),
+      tmax: dMax[0],
+      tmin: dMin[0],
+      days: days,
       ts: Date.now()
     }
     try { localStorage.setItem(key, JSON.stringify({ ts: wx.ts, wx: wx })) } catch (e) { /* quota */ }
@@ -293,7 +363,9 @@
     try { p = JSON.parse(localStorage.getItem('as_prefs') || '{}') } catch (e) { p = {} }
     return {
       district: p.district && AS.district(p.district) ? p.district : 'gasabo',
-      crop: p.crop && AS.CROPS && AS.CROPS[p.crop] ? p.crop : 'maize'
+      crop: p.crop && AS.CROPS && AS.CROPS[p.crop] ? p.crop : 'maize',
+      gps: !!p.gps,
+      gpsKm: p.gpsKm || 0
     }
   }
   AS.savePrefs = function (patch) {

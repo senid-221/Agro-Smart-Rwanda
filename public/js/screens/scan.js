@@ -277,14 +277,16 @@ AS.renderScan = function (container, app) {
   }
 
   // ONE paid AI call per scan: only when the remote provider is configured.
-  // Returns the vision model's findings text, or null (on-device result still shows).
+  // Returns { findings, isPlant, message } or null (on-device result still shows).
   const callAnalyze = async function (imgEl) {
     const prov = (AS.PROVIDER && AS.PROVIDER.get && AS.PROVIDER.get()) || { mode: 'builtin' }
     if (prov.mode !== 'remote') return null
     try {
       const dataUrl = await elementToDataUrl(imgEl, 1024)
       const r = await AS.api.post('/ai/analyze', { dataUrl, lang, cropHint: selectedCrop || '' })
-      return (r && r.findings) ? String(r.findings) : null
+      if (!r) return null
+      if (r.isPlant === false) return { findings: '', isPlant: false, message: String(r.message || '') }
+      return r.findings ? { findings: String(r.findings), isPlant: true } : null
     } catch (e) { return null }
   }
 
@@ -304,11 +306,17 @@ AS.renderScan = function (container, app) {
     try {
       const ratios = await analyzeImageElement(imgEl, isVideo)
       // The real vision call and the on-device colour diagnosis run together.
-      const [aiFindings, result] = await Promise.all([
+      const [aiRes, result] = await Promise.all([
         callAnalyze(imgEl),
         runDiagnosis(ratios, selectedCrop, { steps: tr('scan_steps_analyzing'), onStep: s => setPill(s), totalMs: 2400 })
       ])
-      result.aiFindings = aiFindings
+      // The AI saw no plant: never show a crop diagnosis for a non-plant photo.
+      if (aiRes && aiRes.isPlant === false) {
+        showNotPlantSheet(aiRes.message)
+        shown = true
+        return
+      }
+      result.aiFindings = aiRes ? aiRes.findings : null
       lastResult = result
       showSheet(result)
       shown = true
@@ -455,6 +463,35 @@ AS.renderScan = function (container, app) {
     if (vf) vf.style.opacity = '0.25'
 
     fillConditions()
+  }
+
+  // The AI found no plant in the photo. No crop, no diagnosis, no history entry —
+  // just a plain ask to scan the actual plant.
+  const showNotPlantSheet = function (message) {
+    lastResult = null
+    sheetHost.innerHTML = `
+      <div class="sheet" id="sheet">
+        <div class="sheet-handle"></div>
+        <div class="notplant">
+          <div class="np-ico">${AS.icon('warn', 40)}</div>
+          <div class="np-title">${AS.esc(tr('scan_not_plant_title'))}</div>
+          <div class="np-body">${AS.esc(message || tr('scan_not_plant'))}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="closeNp">${AS.esc(tr('scan_close'))}</button>
+          <button class="btn-solid" id="rescanNp">${AS.esc(tr('result_scan_again'))}</button>
+        </div>
+      </div>`
+    const sheet = sheetHost.querySelector('#sheet')
+    const dismiss = () => {
+      sheetHost.innerHTML = ''
+      const vf = $('#vf')
+      if (vf) vf.style.opacity = ''
+    }
+    sheet.querySelector('#closeNp').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    sheet.querySelector('#rescanNp').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    const vf = $('#vf')
+    if (vf) vf.style.opacity = '0.25'
   }
 
   // Fill the conditions panel with live Open-Meteo weather + deterministic risk.
