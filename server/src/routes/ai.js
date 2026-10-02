@@ -161,22 +161,24 @@ function photoRequest(lang, cropId) {
 // → call the model → persist conversation, case observation and research record.
 async function doctorTurn(userId, { message, lang, ctx = {}, kind = 'report', statusChange = '' }) {
   // Evidence gate (deterministic): a farmer reporting a sick plant with no photo
-  // and no described symptoms gets asked for a photo first — never a guess. Skipped
-  // when this turn continues an existing case (ctx.caseId) or already carries a
-  // scan/photo result.
+  // and no described symptoms gets asked for a photo first — never a guess. An
+  // open case does NOT lift the gate (the Doctor still hasn't seen the plant);
+  // only an attached photo/scan result does. The gate keeps the case link so a
+  // follow-up stays on its case.
   const earlyCrop = knowledge.detectCrop(message)
   const hasPhoto = !!(ctx && ctx.scan && String(ctx.scan).trim())
-  if (!ctx.caseId && !hasPhoto && looksLikeProblem(message, earlyCrop) && !hasSpecificSymptom(message, earlyCrop)) {
+  if (!hasPhoto && looksLikeProblem(message, earlyCrop) && !hasSpecificSymptom(message)) {
     const ask = photoRequest(lang, earlyCrop)
+    const gateCaseId = ctx.caseId || null
     await query(
-      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, NULL)',
-      [userId, 'user', message]
+      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, $4)',
+      [userId, 'user', message, gateCaseId]
     )
     await query(
-      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, NULL)',
-      [userId, 'assistant', ask]
+      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, $4)',
+      [userId, 'assistant', ask, gateCaseId]
     )
-    return { text: ask, caseId: null, cropId: earlyCrop, sources: [], confidence: 'low', emergency: { emergency: false, reason: '' }, needPhoto: true }
+    return { text: ask, caseId: gateCaseId, cropId: earlyCrop, sources: [], confidence: 'low', emergency: { emergency: false, reason: '' }, needPhoto: true }
   }
 
   const res = await research.research(message, lang)
