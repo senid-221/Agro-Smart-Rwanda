@@ -19,6 +19,8 @@
     const prefs = app.prefs()
     const home = districtById(prefs.district) || AS.RW_DISTRICTS[0]
     const CROPS = AS.CROPS || {}
+    // Reference the Leaflet global explicitly; never assume a bare `L`.
+    const L = window.L
 
     // Province -> district picker (same real 30 districts as the weather screen).
     const provs = {}
@@ -67,7 +69,7 @@
 
     // Leaflet is loaded from a CDN in index.html. If it is not present (offline /
     // blocked) we say so honestly and still list the farmer's cases below.
-    if (!window.L) {
+    if (!L || !L.map) {
       const mp = container.querySelector('#map')
       if (mp) mp.hidden = true
       const none = container.querySelector('#mapNone')
@@ -75,10 +77,15 @@
     }
 
     let map = null, youMarker = null, accCircle = null
-    const caseLayer = window.L ? L.layerGroup() : null
+    let caseMarkers = []
+
+    function clearCaseMarkers() {
+      if (map) caseMarkers.forEach(mk => { try { map.removeLayer(mk) } catch (e) { /* detached */ } })
+      caseMarkers = []
+    }
 
     function initMap(center) {
-      if (!window.L || map) return
+      if (!L || !L.map || map) return
       map = L.map(container.querySelector('#map'), { zoomControl: true, attributionControl: true })
         .setView([center.lat, center.lon], 9)
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -89,7 +96,6 @@
       L.marker([center.lat, center.lon], { title: center.name })
         .addTo(map)
         .bindPopup('<b>' + esc(center.name) + '</b>')
-      if (caseLayer) caseLayer.addTo(map)
     }
 
     function recenter(d) {
@@ -101,7 +107,7 @@
     // Plot the farmer's real cases. Only cases with a recorded district get a pin;
     // every case is listed below (tappable to open the Crop Health Case).
     function paintCases(cases) {
-      if (caseLayer) caseLayer.clearLayers()
+      clearCaseMarkers()
       if (!cases.length) {
         listEl.innerHTML = `<div class="card empty-state" style="padding:16px"><span class="emoji">🌿</span>${esc(tr('map_no_cases'))}</div>`
         return
@@ -113,15 +119,18 @@
         if (!d) return
         ;(groups[d.id] = groups[d.id] || { d, items: [] }).items.push(c)
       })
-      Object.values(groups).forEach(g => {
+      Object.keys(groups).forEach(id => {
+        const g = groups[id]
         const label = g.items.map(c => {
           const crop = CROPS[c.crop] ? CROPS[c.crop][lang] : (c.crop || '—')
           return esc(crop) + ' · ' + esc(tr(statusKey[c.status] || 'cs_open'))
         }).join('<br>')
-        if (map && caseLayer) {
-          L.circleMarker([g.d.lat, g.d.lon], {
-            radius: 7, color: '#c0392b', weight: 2, fillColor: '#e74c3c', fillOpacity: 0.85
-          }).addTo(caseLayer).bindPopup('<b>' + esc(g.d[lang]) + '</b><br>' + label)
+        if (map) {
+          caseMarkers.push(
+            L.circleMarker([g.d.lat, g.d.lon], {
+              radius: 7, color: '#c0392b', weight: 2, fillColor: '#e74c3c', fillOpacity: 0.85
+            }).addTo(map).bindPopup('<b>' + esc(g.d[lang]) + '</b><br>' + label)
+          )
         }
       })
 
@@ -165,11 +174,10 @@
       if (sel) sel.value = loc.district.id
       if (sub) sub.textContent = tr('wx_gps_on') + (loc.accuracy ? ' · ±' + loc.accuracy + ' m' : '')
       if (map) {
-        if (!youMarker) {
-          youMarker = L.marker([loc.lat, loc.lon], { title: tr('map_lg_you') }).addTo(map)
-        } else { youMarker.setLatLng([loc.lat, loc.lon]) }
+        if (!youMarker) youMarker = L.marker([loc.lat, loc.lon], { title: tr('map_lg_you') }).addTo(map)
+        else youMarker.setLatLng([loc.lat, loc.lon])
         youMarker.bindPopup('<b>' + esc(tr('map_lg_you')) + '</b>').openPopup()
-        if (accCircle) map.removeLayer(accCircle)
+        if (accCircle) { try { map.removeLayer(accCircle) } catch (e) { /* detached */ } }
         if (loc.accuracy) {
           accCircle = L.circle([loc.lat, loc.lon], {
             radius: loc.accuracy, color: '#2f80ed', weight: 1, fillColor: '#2f80ed', fillOpacity: 0.12
