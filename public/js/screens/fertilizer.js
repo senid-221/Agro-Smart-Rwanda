@@ -6,7 +6,6 @@ AS.renderFertilizer = function (container, app) {
   const lang = app.lang
 
   container.innerHTML = `
-    <div class="section-title">${tr('fert_title')} 🧪</div>
     <p class="progress-note" style="margin-bottom:14px">${tr('fert_sub')}</p>
   `
 

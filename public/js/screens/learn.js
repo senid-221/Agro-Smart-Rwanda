@@ -15,7 +15,6 @@ AS.renderLearn = function (container, app) {
   const lang = app.lang
 
   container.innerHTML = `
-    <div class="section-title">${tr('learn_title')} 📖</div>
     <p class="progress-note" style="margin-bottom:14px">${tr('learn_sub')}</p>
     <button class="list-row" id="cropsRow">
       <span class="emoji"><img class="fico round" src="img/crops/maize.png" alt=""></span>
@@ -74,11 +73,10 @@ AS.renderCrops = function (container, app) {
   const tr = app.t()
   const lang = app.lang
 
-  container.innerHTML = `
-    <div class="section-title">${tr('crops_title')} 🌱</div>
-    <p class="progress-note" style="margin-bottom:14px">${tr('crops_sub')}</p>
-  `
   container.appendChild(backBtn(app, 'learn', tr('back')))
+  container.insertAdjacentHTML('beforeend', `
+    <p class="progress-note" style="margin:0 0 14px">${tr('crops_sub')}</p>
+  `)
 
   CROP_GUIDES.forEach(c => {
     const row = document.createElement('button')

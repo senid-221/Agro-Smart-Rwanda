@@ -302,76 +302,104 @@ AS.renderOnboarding = function (container, app) {
 
 AS.renderSettings = function (container, app) {
   const tr = app.t()
+  const lang = app.lang || 'rw'
   const isAdmin = app.user && app.user.role === 'admin'
+  const prefs = app.prefs()
+
+  const provs = ['Kigali', 'North', 'South', 'East', 'West']
+  const districtOpts = provs.map(function (p) {
+    const list = AS.RW_DISTRICTS.filter(d => d.prov === p)
+    return `<optgroup label="${p}">` + list.map(d =>
+      `<option value="${d.id}"${d.id === prefs.district ? ' selected' : ''}>${esc(d[lang])}</option>`).join('') + '</optgroup>'
+  }).join('')
+  const cropOpts = Object.entries(AS.CROPS).map(([id, c]) =>
+    `<option value="${id}"${id === prefs.crop ? ' selected' : ''}>${esc(c[lang] || c.en)}</option>`).join('')
 
   container.innerHTML = `
-    <div class="section-title">${tr('settings_title')} <img class="ico" src="img/settings.png" alt=""></div>
+    <div class="setting-row">
+      <div style="flex:1;min-width:0">
+        <div class="label">${AS.icon('pin', 18)} ${tr('settings_district')}</div>
+        <div class="desc">${tr('settings_district_d')}</div>
+      </div>
+      <select class="mini-sel" id="districtSel">${districtOpts}</select>
+    </div>
+
+    <div class="setting-row">
+      <div style="flex:1;min-width:0">
+        <div class="label">${AS.icon('sprout', 18)} ${tr('settings_crop')}</div>
+        <div class="desc">${tr('settings_crop_d')}</div>
+      </div>
+      <select class="mini-sel" id="cropSel">${cropOpts}</select>
+    </div>
 
     <div class="setting-row">
       <div>
-        <div class="label"><img class="ico" src="img/id-card.png" alt=""> ${tr('settings_account')}</div>
+        <div class="label">${AS.icon('user', 18)} ${tr('settings_account')}</div>
         <div class="desc">${esc([app.user.email || app.user.id, app.user.phone].filter(Boolean).join(' · '))}${isAdmin ? ' · ' + tr('admin_role') : ''}</div>
       </div>
     </div>
 
     <div class="setting-row" id="dashRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/home.png" alt=""> ${tr('dash_title')}</div>
+        <div class="label">${AS.icon('chart', 18)} ${tr('dash_title')}</div>
         <div class="desc">${tr('dash_desc')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>
 
     ${isAdmin ? `<div class="setting-row" id="adminRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/settings.png" alt=""> ${tr('admin_title')}</div>
+        <div class="label">${AS.icon('shield', 18)} ${tr('admin_title')}</div>
         <div class="desc">${tr('admin_desc')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>` : ''}
 
     <div class="setting-row" id="installRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/download.png" alt=""> ${tr('settings_install')}</div>
+        <div class="label">${AS.icon('plus', 18)} ${tr('settings_install')}</div>
         <div class="desc">${AS.isInstalled() ? tr('settings_installed') : tr('settings_install_desc')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>
 
     <div class="setting-row" id="moreRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/chemistry.png" alt=""> ${tr('fert_title')}</div>
+        <div class="label">${AS.icon('flask', 18)} ${tr('fert_title')}</div>
         <div class="desc">${tr('fert_sub')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>
 
     <div class="setting-row" id="ordersRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/cart.png" alt=""> ${tr('store_orders')}</div>
+        <div class="label">${AS.icon('cart', 18)} ${tr('store_orders')}</div>
         <div class="desc">${tr('orders_desc')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>
 
     <div class="setting-row" id="resetRow" style="cursor:pointer">
       <div>
-        <div class="label"><img class="ico" src="img/trash.png" alt=""> ${tr('settings_reset')}</div>
+        <div class="label">${AS.icon('trash', 18)} ${tr('settings_reset')}</div>
       </div>
-      <span class="arrow">›</span>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>
 
     <button class="btn btn-outline" id="logoutBtn" style="margin-top:14px">
-      <img class="btn-ico" src="img/logout.png" alt=""> ${tr('settings_logout')}
+      ${AS.icon('logout', 18, 'btn-ico')} ${tr('settings_logout')}
     </button>
 
     <div class="card" style="margin-top:16px">
-      <div class="label" style="font-weight:700;margin-bottom:6px"><img class="ico" src="img/info.png" alt=""> ${tr('settings_about')}</div>
+      <div class="label" style="font-weight:700;margin-bottom:6px">${AS.icon('info', 18)} ${tr('settings_about')}</div>
       <p style="font-size:13px;color:var(--text-soft)">${tr('settings_about_text')}</p>
       <p class="progress-note" style="margin-top:6px">${tr('credits')}</p>
     </div>
-    <p class="progress-note" style="text-align:center;margin-top:14px">🌿 ${tr('appName')} · ${tr('settings_version')}</p>
+    <p class="progress-note" style="text-align:center;margin-top:14px">${tr('appName')} · ${tr('settings_version')}</p>
   `
+
+  container.querySelector('#districtSel').onchange = e => app.setPrefs({ district: e.target.value })
+  container.querySelector('#cropSel').onchange = e => app.setPrefs({ crop: e.target.value })
 
   const nameInput = container.querySelector('#nameInput')
   if (nameInput) nameInput.onchange = () => app.setName(nameInput.value.trim())

@@ -37,13 +37,12 @@ AS.renderStore = function (container, app) {
   container.innerHTML = `
     <div id="storeListWrap">
       <div class="store-head">
-        <div class="section-title" style="margin:0">${tr('store_title')}</div>
+        <p class="progress-note" style="margin:0">${tr('store_sub')}</p>
         <button class="cart-btn" id="cartBtn" aria-label="${tr('store_cart')}">
-          <img src="img/cart.png" alt=""><span class="cart-badge" id="cartBadge">0</span>
+          ${AS.icon('cart', 20)}<span class="cart-badge" id="cartBadge">0</span>
         </button>
       </div>
-      <p class="progress-note" style="margin:6px 0 12px">${tr('store_sub')}</p>
-      <input class="store-search" id="storeSearch" placeholder="🔍 ${tr('store_search')}" />
+      <input class="store-search" id="storeSearch" placeholder="🔍 ${tr('store_search')}" style="margin-top:12px" />
       <div class="chip-row store-chips" id="storeChips"></div>
       <div class="prod-grid" id="prodGrid"></div>
     </div>
@@ -162,7 +161,6 @@ AS.renderCart = function (container, app) {
     const total = rows.reduce((s, r) => s + r.p.price * r.qty, 0)
 
     container.innerHTML = `
-      <div class="section-title">${tr('store_cart')} 🧺</div>
       <div id="cartList"></div>
       ${rows.length ? `
         <div class="cart-total"><span>${tr('store_total')}</span><b>${AS.fmtRWF(total)}</b></div>
@@ -230,7 +228,7 @@ AS.renderOrders = function (container, app) {
 
   const draw = async () => {
     const orders = await AS.api.get('/orders')
-    container.innerHTML = `<div class="section-title">${tr('store_orders')} 📦</div><div id="orderList"></div>`
+    container.innerHTML = `<div id="orderList"></div>`
     const list = container.querySelector('#orderList')
     if (!orders.length) {
       list.innerHTML = `<div class="empty-state"><span class="emoji">📦</span>${tr('orders_empty')}</div>`

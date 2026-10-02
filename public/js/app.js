@@ -4,7 +4,7 @@ const {
   renderHome, renderScan, renderLearn, renderLessonDetail, renderCrops, renderCropDetail,
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
-  renderAssistant, renderCase, renderDashboard, renderAdmin
+  renderAssistant, renderCase, renderDashboard, renderAdmin, renderAlerts
 } = AS
 
 const state = {
@@ -22,22 +22,37 @@ const t = () => makeT(state.lang)
 const ROUTES = {
   home: { screen: 'home', render: c => renderHome(c, app) },
   scan: { screen: 'scan', render: c => renderScan(c, app) },
+  alerts: { screen: 'alerts', render: c => renderAlerts(c, app) },
   learn: { screen: 'learn', render: c => renderLearn(c, app) },
   lesson: { screen: 'learn', render: c => renderLessonDetail(c, app, state.route.params.id) },
   crops: { screen: 'learn', render: c => renderCrops(c, app) },
   crop: { screen: 'learn', render: c => renderCropDetail(c, app, state.route.params.id) },
   library: { screen: 'library', render: c => renderLibrary(c, app) },
   disease: { screen: 'library', render: c => renderDiseaseDetail(c, app, state.route.params.id) },
-  fertilizer: { screen: 'more', render: c => renderFertilizer(c, app) },
-  fertDetail: { screen: 'more', render: c => renderFertilizerDetail(c, app, state.route.params.id) },
+  fertilizer: { screen: 'learn', render: c => renderFertilizer(c, app) },
+  fertDetail: { screen: 'learn', render: c => renderFertilizerDetail(c, app, state.route.params.id) },
   store: { screen: 'store', render: c => renderStore(c, app) },
   cart: { screen: 'store', render: c => renderCart(c, app) },
   orders: { screen: 'store', render: c => renderOrders(c, app) },
   assistant: { screen: 'assistant', render: c => renderAssistant(c, app) },
   case: { screen: 'assistant', render: c => renderCase(c, app, state.route.params.id) },
-  dashboard: { screen: 'dashboard', render: c => renderDashboard(c, app) },
+  dashboard: { screen: 'analytics', render: c => renderDashboard(c, app) },
   admin: { screen: 'admin', render: c => renderAdmin(c, app) },
-  settings: { screen: 'more', render: c => renderSettings(c, app) }
+  settings: { screen: 'settings', render: c => renderSettings(c, app) }
+}
+
+// Screens that draw their own header exactly as in the design mockup
+// (assistant/case keep the chat header, admin keeps its panel header).
+const OWN_CHROME = { home: 1, analytics: 1, alerts: 1, scan: 1, assistant: 1, admin: 1 }
+// Tab-bar label + icon per screen group.
+const TAB_FOR = { home: 'home', analytics: 'analytics', alerts: 'alerts', settings: 'settings' }
+// Title for the generic header, per route (falls back to the screen group title).
+const ROUTE_TITLE = {
+  learn: 'nav_learn', lesson: 'nav_learn', crops: 'crops_title', crop: 'crops_title',
+  library: 'library_title', disease: 'nav_library',
+  fertilizer: 'fert_title', fertDetail: 'fert_title',
+  store: 'store_title', cart: 'store_cart', orders: 'store_orders',
+  settings: 'nav_settings'
 }
 
 const app = {
@@ -163,7 +178,15 @@ const app = {
     localStorage.removeItem('as_history')
     render()
   },
-  tr(key) { return t()(key) }
+  tr(key) { return t()(key) },
+  // Farmer's district + focus crop drive the weather, soil and alert logic.
+  prefs() { return AS.prefs() },
+  setPrefs(patch) { AS.savePrefs(patch); render() },
+  setAlertCount(n) {
+    const v = Number(n) || 0
+    localStorage.setItem('as_alert_count', String(v))
+    return v
+  }
 }
 
 window.addEventListener('beforeinstallprompt', e => {
@@ -184,62 +207,78 @@ AS.isInstalled = () =>
   window.matchMedia('(display-mode: minimal-ui)').matches ||
   window.navigator.standalone === true
 
+function tabbar(tr, screen) {
+  const nav = document.createElement('nav')
+  nav.className = 'tabbar'
+  const active = TAB_FOR[screen] || null
+  const badge = Number(localStorage.getItem('as_alert_count') || 0)
+  const items = [
+    { key: 'home', route: 'home', icon: 'home', label: tr('nav_home') },
+    { key: 'analytics', route: 'dashboard', icon: 'chart', label: tr('nav_analytics') },
+    { key: 'scan', route: 'scan', icon: 'scan', label: tr('nav_scan'), fab: true },
+    { key: 'alerts', route: 'alerts', icon: 'bell', label: tr('nav_alerts'), badge: badge },
+    { key: 'settings', route: 'settings', icon: 'gear', label: tr('nav_settings') }
+  ]
+  items.forEach(it => {
+    const b = document.createElement('button')
+    b.className = 'tab' + (active === it.key ? ' active' : '') + (it.fab ? ' tab-center' : '')
+    b.setAttribute('aria-label', it.label)
+    if (it.fab) {
+      b.innerHTML = `<span class="fab">${AS.icon(it.icon, 25)}</span><span>${AS.esc(it.label)}</span>`
+    } else {
+      b.innerHTML = `<span class="t-ico">${AS.icon(it.icon, 23)}${it.badge ? '<i class="dot"></i>' : ''}</span><span>${AS.esc(it.label)}</span>`
+    }
+    b.onclick = () => app.go(it.route)
+    nav.appendChild(b)
+  })
+  return nav
+}
+
 function shell() {
   const el = document.getElementById('app')
   el.innerHTML = ''
 
   const tr = t()
-  AS.THEME.apply(state.lang || 'rw', tr)
-  const currentScreen = ROUTES[state.route.name]?.screen || 'home'
-  const appTitle = AS.THEME.title(state.lang || 'rw', tr)
-  const appSub = AS.THEME.subtitle(state.lang || 'rw', tr)
-  const logo = AS.THEME_LOGO || 'img/leaf.png'
+  const lang = state.lang || 'rw'
+  AS.THEME.apply(lang, tr)
 
-  // header
-  const header = document.createElement('header')
-  header.className = 'app-header'
-  header.innerHTML = `
-    <div class="row">
-      <div>
-        <h1><img class="h-ico" src="${logo}" alt=""> ${appTitle}</h1>
-        <div class="sub">${appSub}</div>
-      </div>
-      <button class="lang-chip" id="langToggle">${state.lang === 'rw' ? 'EN' : 'RW'}</button>
-    </div>`
-  header.querySelector('#langToggle').onclick = () =>
-    app.setLang(state.lang === 'rw' ? 'en' : 'rw')
-  header.querySelector('h1').style.cursor = 'pointer'
-  header.querySelector('h1').onclick = () => app.go('home')
-  el.appendChild(header)
-
-  // screen container
-  const main = document.createElement('main')
-  main.className = 'screen'
-  el.appendChild(main)
   const route = ROUTES[state.route.name] || ROUTES.home
-  route.render(main)
+  const screen = route.screen
 
-  // bottom nav
-  const nav = document.createElement('nav')
-  nav.className = 'bottom-nav'
-  const items = [
-    { key: 'home', icon: 'img/home.png', label: tr('nav_home') },
-    { key: 'store', icon: 'img/cart.png', label: tr('nav_store') },
-    { key: 'scan', icon: 'img/camera.png', label: tr('nav_scan') },
-    { key: 'library', icon: 'img/leaf.png', label: tr('nav_library') },
-    { key: 'more', icon: 'img/settings.png', label: tr('nav_more') }
-  ]
-  items.forEach(it => {
-    const b = document.createElement('button')
-    b.className = 'nav-item' + (currentScreen === it.key ? ' active' : '') + (it.key === 'scan' ? ' scan-btn' : '')
-    b.innerHTML = `<span class="icon"><img src="${it.icon}" alt=""></span><span>${it.label}</span>`
-    b.onclick = () => app.go(it.key === 'more' ? 'settings' : it.key)
-    nav.appendChild(b)
-  })
-  el.appendChild(nav)
+  const main = document.createElement('main')
+  main.className = 'screen' + (screen === 'scan' ? ' bare' : '')
+  el.appendChild(main)
+
+  // The generic header lives outside the route container: screens assign
+  // container.innerHTML (sometimes again after an async fetch), which would wipe it.
+  if (!OWN_CHROME[screen]) {
+    const bar = document.createElement('div')
+    bar.className = 'top-bar'
+    bar.innerHTML = `
+      <div style="min-width:0">
+        <div class="tb-sub">${AS.esc(AS.THEME.subtitle(lang, tr))}</div>
+        <div class="tb-title">${AS.esc(tr(ROUTE_TITLE[state.route.name] || 'appName'))}</div>
+      </div>
+      <div class="tb-right">
+        <button class="lang-pill" id="langToggle">${lang === 'rw' ? 'EN' : 'RW'}</button>
+        <button class="icon-btn" id="bellBtn" aria-label="${AS.esc(tr('nav_alerts'))}">${AS.icon('bell', 21)}</button>
+      </div>`
+    bar.querySelector('#langToggle').onclick = () => app.setLang(lang === 'rw' ? 'en' : 'rw')
+    bar.querySelector('#bellBtn').onclick = () => app.go('alerts')
+    main.appendChild(bar)
+  }
+
+  const body = document.createElement('div')
+  body.className = 'route'
+  main.appendChild(body)
+
+  route.render(body)
+
+  if (screen !== 'scan') el.appendChild(tabbar(tr, screen))
 }
 
 function render() {
+  if (AS.stopCamera) AS.stopCamera()
   if (!state.user) {
     const el = document.getElementById('app')
     el.innerHTML = ''

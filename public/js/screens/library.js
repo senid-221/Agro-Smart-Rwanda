@@ -8,7 +8,6 @@ AS.renderLibrary = function (container, app) {
   let query = ''
 
   container.innerHTML = `
-    <div class="section-title">${tr('library_title')} 🦠</div>
     <p class="progress-note" style="margin-bottom:12px">${tr('library_sub')}</p>
     <input class="search-box" id="search" placeholder="${tr('library_search')}" />
     <div class="chip-row" id="cropFilter" style="margin-bottom:14px"></div>
