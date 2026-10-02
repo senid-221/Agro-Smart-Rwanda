@@ -279,6 +279,7 @@ function shell() {
 
 function render() {
   if (AS.stopCamera) AS.stopCamera()
+  if (AS.lottieStopAll) AS.lottieStopAll()
   if (!state.user) {
     const el = document.getElementById('app')
     el.innerHTML = ''

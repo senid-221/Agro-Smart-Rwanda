@@ -40,6 +40,7 @@ AS.renderScan = function (container, app) {
 
       <div class="vf-wrap">
         <div class="vf" id="vf"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i><span class="scanline"></span></div>
+        <div class="scan-fx" id="scanFx" hidden></div>
         <button class="an-pill" id="pillBtn"><span class="dot"></span><span id="pillText">${AS.esc(tr('scan_pill_ready'))}</span></button>
         <button class="sc-sub-btn" id="galleryBtn">${AS.esc(tr('scan_gallery'))}</button>
       </div>
@@ -136,6 +137,11 @@ AS.renderScan = function (container, app) {
     analyzing = true
     pillBtn.disabled = true
     setPill(tr('scan_pill_analyzing'))
+    // Lottie sonar rings over the leaf; the CSS ring stays underneath as fallback.
+    const fx = $('#scanFx')
+    fx.innerHTML = '<div class="scan-ring"></div>'
+    fx.hidden = false
+    const stopFx = AS.lottie(fx.querySelector('.scan-ring'), 'lottie/scan-rings.json')
     try {
       const ratios = await analyzeImageElement(imgEl, isVideo)
       const result = await runDiagnosis(ratios, selectedCrop, {
@@ -147,6 +153,9 @@ AS.renderScan = function (container, app) {
     } catch (e) {
       alert(tr('scan_error_type'))
     } finally {
+      stopFx()
+      fx.hidden = true
+      fx.innerHTML = ''
       analyzing = false
       pillBtn.disabled = false
       setPill(hasLive() ? tr('scan_pill_ready') : tr('scan_gallery'))

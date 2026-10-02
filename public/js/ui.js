@@ -149,4 +149,85 @@
     const days = Math.round(h / 24)
     return days + (lang === 'rw' ? ' iminsi' : 'd')
   }
+
+  // ---------- Lottie ----------
+  // Two free LottieFiles animations are self-hosted in /lottie (Lottie Simple
+  // License, no attribution required):
+  //   scan-rings.json     <- assets-v2.lottiefiles.com/a/d62d68ce-1150-11ee-836b-2fdc9f56f40f/nlrTeVZKPl.lottie
+  //   thinking-dots.json  <- assets-v2.lottiefiles.com/a/948d6990-1151-11ee-9fdc-bfd7dbdb6f23/1m8X6QziYo.lottie (recoloured to our green)
+  // The player is fetched on first use so its 168 KB stay off the startup path,
+  // and any failure leaves the caller's CSS fallback untouched.
+  let player = null
+  function loadPlayer() {
+    if (window.lottie) return Promise.resolve(window.lottie)
+    if (!player) {
+      player = new Promise(function (resolve, reject) {
+        const s = document.createElement('script')
+        s.src = 'vendor/lottie_light.min.js'
+        s.onload = function () { resolve(window.lottie) }
+        s.onerror = function () { player = null; reject(new Error('lottie_unavailable')) }
+        document.head.appendChild(s)
+      })
+    }
+    return player
+  }
+
+  // Fills el with the animation; returns a stop() that destroys it.
+  const live = new Set()
+  AS.lottie = function (el, src, opts) {
+    const o = opts || {}
+    let anim = null
+    let dead = false
+    const stop = function () {
+      dead = true
+      live.delete(stop)
+      if (anim) { try { anim.destroy() } catch (e) { /* already gone */ } anim = null }
+    }
+    live.add(stop)
+    loadPlayer()
+      .then(function (lottie) {
+        if (dead || !el.isConnected) return null
+        return fetch(src).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('lottie_404')) })
+          .then(function (data) {
+            if (dead || !el.isConnected) return
+            el.innerHTML = ''
+            el.classList.add('lottie-host')
+            anim = lottie.loadAnimation({
+              container: el,
+              renderer: 'svg',
+              loop: o.loop !== false,
+              autoplay: o.autoplay !== false,
+              animationData: data,
+              rendererSettings: { preserveAspectRatio: o.align || 'xMidYMid meet' }
+            })
+            if (o.speed) anim.setSpeed(o.speed)
+          })
+      })
+      .catch(function () { /* keep the CSS fallback already inside el */ })
+    return stop
+  }
+
+  // Called on every route change so a screen that is torn down never keeps
+  // an invisible animation running.
+  AS.lottieStopAll = function () {
+    Array.from(live).forEach(function (stop) { stop() })
+    live.clear()
+  }
+
+  // One delegated listener instead of per-button wiring, so buttons rendered
+  // later (store results, chat, admin panels) get the same press feedback.
+  const RIPPLE = '.btn, .btn-solid, .btn-ghost, .chip, .sc-chip, .sc-btn, .feature-card, .list-row, .stat-card, .bn-go'
+  document.addEventListener('pointerdown', function (e) {
+    const host = e.target.closest && e.target.closest(RIPPLE)
+    if (!host || host.disabled) return
+    const r = host.getBoundingClientRect()
+    const size = Math.max(r.width, r.height)
+    const s = document.createElement('span')
+    s.className = 'ripple'
+    s.style.width = s.style.height = size + 'px'
+    s.style.left = (e.clientX - r.left - size / 2) + 'px'
+    s.style.top = (e.clientY - r.top - size / 2) + 'px'
+    host.appendChild(s)
+    setTimeout(function () { s.remove() }, 620)
+  }, { passive: true })
 })()

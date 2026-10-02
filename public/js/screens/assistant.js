@@ -75,7 +75,8 @@ function waDay(label) {
   return d
 }
 
-// Incoming bubble with the animated three-dot "typing" indicator.
+// Incoming bubble with the animated "typing" indicator: a Lottie dot-wave once
+// the player has loaded, plain CSS dots until then (or if it never does).
 function typingRow() {
   const row = document.createElement('div')
   row.className = 'wa-msg in'
@@ -83,7 +84,14 @@ function typingRow() {
   bubble.className = 'wa-bubble'
   bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>'
   row.appendChild(bubble)
+  row._stopLottie = AS.lottie(bubble.querySelector('.typing'), 'lottie/thinking-dots.json')
   return row
+}
+
+function killTyping(el) {
+  if (!el) return
+  if (el._stopLottie) el._stopLottie()
+  el.remove()
 }
 
 AS.renderAssistant = function (container, app) {
@@ -228,6 +236,7 @@ AS.renderAssistant = function (container, app) {
   }
 
   function drawLog() {
+    AS.lottieStopAll()
     log.innerHTML = ''
     let lastDay = ''
     chatLog.forEach(m => {
@@ -283,7 +292,7 @@ AS.renderAssistant = function (container, app) {
     const note = typingRow()
     log.appendChild(note)
     const res = await AS.api.get('/ai/history')
-    note.remove()
+    killTyping(note)
     if (res && res.messages && res.messages.length) {
       chatLog = res.messages.map(m => ({ who: m.role === 'user' ? 'user' : 'ai', text: m.content, at: m.at, read: true }))
     }
@@ -330,7 +339,7 @@ AS.renderAssistant = function (container, app) {
     const typing = typingRow()
     log.appendChild(typing); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/cases/' + activeCase.id + '/followup', { note, statusChange, lang: app.lang })
-    typing.remove(); setTyping(false)
+    killTyping(typing); setTyping(false)
     markRead()
     chatLog.push({ who: 'ai', text: (res && res.text) || '', at: Date.now() })
     drawLog()
@@ -350,7 +359,7 @@ AS.renderAssistant = function (container, app) {
     const res = await AS.api.post('/ai/analyze', {
       dataUrl, lang: app.lang, cropHint: (activeCase && activeCase.crop) || '', caseId: activeCase ? activeCase.id : null
     })
-    busy.remove(); setTyping(false)
+    killTyping(busy); setTyping(false)
     if (res && res.findings) {
       pendingScan = res.findings
       chatLog.push({ who: 'ai', text: `📷 ${tr('assistant_photo_findings')}\n${res.findings}`, at: Date.now() })
@@ -382,7 +391,7 @@ AS.renderAssistant = function (container, app) {
     if (activeCase) ctx.caseId = activeCase.id
     if (pendingScan) ctx.scan = pendingScan
     const res = await AS.api.post('/ai/chat', { message: text, lang: app.lang, ctx })
-    typingRowEl.remove(); setTyping(false)
+    killTyping(typingRowEl); setTyping(false)
     chatCtx = res.ctx || chatCtx
     if (res && res.caseId && (!activeCase || activeCase.id !== res.caseId)) {
       activeCase = { id: res.caseId, crop: res.cropId || (activeCase && activeCase.crop) || '', status: 'monitoring', district: (activeCase && activeCase.district) || '' }

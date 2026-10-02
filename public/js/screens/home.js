@@ -156,7 +156,36 @@ AS.renderHome = function (container, app) {
       </button>
     </div>
 
-    <div class="tip-card"><b>${AS.esc(tr('home_tip'))}:</b> ${AS.esc(TIPS[lang === 'rw' ? 'rw' : 'en'][dayIndex])}</div>
+    <div class="banner">
+      <div class="bn-track" id="bnTrack">
+        <div class="bn-slide tip-card"><b>${AS.esc(tr('home_tip'))}:</b> ${AS.esc(TIPS[lang === 'rw' ? 'rw' : 'en'][dayIndex])}</div>
+        <button class="bn-slide bn-go" data-go="scan">
+          <span class="bg-ico">${AS.icon('scan', 20)}</span>
+          <span class="bg-body">
+            <span class="bg-title">${AS.esc(tr('home_scan_title'))}</span>
+            <span class="bg-text">${AS.esc(tr('home_scan_desc'))}</span>
+          </span>
+          <span class="bg-arrow">${AS.icon('arrowr', 18)}</span>
+        </button>
+        <button class="bn-slide bn-go dark" data-go="assistant">
+          <span class="bg-ico">${AS.icon('chat', 20)}</span>
+          <span class="bg-body">
+            <span class="bg-title">${AS.esc(tr('home_feature_ai'))}</span>
+            <span class="bg-text">${AS.esc(tr('home_feature_ai_d'))}</span>
+          </span>
+          <span class="bg-arrow">${AS.icon('arrowr', 18)}</span>
+        </button>
+        <button class="bn-slide bn-go" data-go="alerts">
+          <span class="bg-ico">${AS.icon('bell', 20)}</span>
+          <span class="bg-body">
+            <span class="bg-title">${AS.esc(tr('nav_alerts'))}</span>
+            <span class="bg-text">${AS.esc(tr('al_weather'))}</span>
+          </span>
+          <span class="bg-arrow">${AS.icon('arrowr', 18)}</span>
+        </button>
+      </div>
+      <div class="bn-dots" id="bnDots"><i class="on"></i><i></i><i></i><i></i></div>
+    </div>
     <p class="danger-note">${AS.esc(tr('home_source_note')).replace('{crop}', AS.esc(cropName))}</p>
   `
 
@@ -167,6 +196,38 @@ AS.renderHome = function (container, app) {
   container.querySelector('#viewAll').onclick = () => app.go('dashboard')
   container.querySelector('#insightCard').onclick = () => app.go('assistant')
   container.querySelectorAll('[data-go]').forEach(b => (b.onclick = () => app.go(b.dataset.go)))
+
+  // ---- sliding banner ----
+  const track = container.querySelector('#bnTrack')
+  const dots = Array.from(container.querySelectorAll('#bnDots i'))
+  let slide = 0
+  let swiped = false
+  const show = function (i) {
+    slide = (i + dots.length) % dots.length
+    track.style.transform = 'translateX(' + (-slide * 100) + '%)'
+    dots.forEach((d, n) => d.classList.toggle('on', n === slide))
+  }
+  const timer = setInterval(function () {
+    if (!container.isConnected) return clearInterval(timer)
+    show(slide + 1)
+  }, 5200)
+  let downX = null
+  track.addEventListener('pointerdown', e => { downX = e.clientX }, { passive: true })
+  track.addEventListener('pointerup', e => {
+    if (downX == null) return
+    const dx = e.clientX - downX
+    downX = null
+    if (Math.abs(dx) < 40) return
+    swiped = true
+    show(dx < 0 ? slide + 1 : slide - 1)
+  }, { passive: true })
+  // A swipe ends on the same button it started on — swallow that click.
+  track.querySelectorAll('.bn-go').forEach(function (b) {
+    b.onclick = function () {
+      if (swiped) { swiped = false; return }
+      app.go(b.dataset.go)
+    }
+  })
 
   // ---- live weather (Open-Meteo) ----
   const paintWx = function (wx) {

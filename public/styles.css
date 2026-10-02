@@ -843,3 +843,85 @@ body {
 .tl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tl-note { font-size: 13px; color: var(--text); }
 .tl-tag { display: inline-block; align-self: flex-start; background: var(--green-100); color: var(--green-900); font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-top: 3px; margin-right: 4px; }
+
+/* ---------- motion ---------- */
+/* Lottie hosts (scan sonar rings, AI thinking dots) */
+.scan-fx {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.scan-fx[hidden] { display: none; }
+.scan-fx .scan-ring {
+  width: 168px; height: 168px; margin: 0; border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.22); border-top-color: #fff;
+}
+.lottie-host { border: none !important; animation: none !important; }
+.lottie-host svg { display: block; width: 100%; height: 100%; }
+.typing.lottie-host { width: 46px; height: 23px; padding: 0; gap: 0; }
+
+/* press feedback + ripple */
+/* .tab is excluded: its centre Scan FAB overflows the box and would be clipped */
+.bn-go, .btn, .btn-solid, .btn-ghost, .chip, .feature-card, .list-row, .sc-btn, .sc-chip, .stat-card {
+  position: relative; overflow: hidden;
+  transition: transform 0.13s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.btn:active, .btn-solid:active, .btn-ghost:active, .chip:active, .sc-chip:active,
+.feature-card:active, .list-row:active, .stat-card:active, .sc-btn:active { transform: scale(0.972); }
+.bn-go:active { transform: scale(0.985); }
+.tab { transition: transform 0.13s ease; }
+.tab:active { transform: translateY(1px); }
+.fab { transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease; }
+.tab:active .fab { transform: scale(0.9); }
+.ripple {
+  position: absolute; border-radius: 50%; pointer-events: none; transform: scale(0);
+  background: currentColor; opacity: 0.22; animation: ripple-out 0.55s ease-out forwards;
+}
+@keyframes ripple-out { to { transform: scale(2.4); opacity: 0; } }
+
+/* sliding home banner */
+.banner { position: relative; overflow: hidden; border-radius: 18px; margin-top: 14px; }
+.bn-track { display: flex; transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1); will-change: transform; }
+.bn-slide { flex: 0 0 100%; min-width: 100%; box-sizing: border-box; }
+.bn-dots { position: absolute; right: 12px; bottom: 9px; display: flex; gap: 5px; }
+.bn-dots i { width: 5px; height: 5px; border-radius: 999px; background: rgba(29, 29, 27, 0.22); transition: width 0.25s ease, background-color 0.25s ease; }
+.bn-dots i.on { width: 14px; background: var(--green-700); }
+.bn-slide.tip-card { margin: 0; }
+.bn-go {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 18px; padding: 13px 14px;
+  background: linear-gradient(120deg, var(--green-100), #f2f8ec); box-shadow: var(--shadow);
+}
+.bn-go.dark { background: linear-gradient(120deg, var(--dark), var(--dark-2)); border-color: transparent; color: #f2f6ee; }
+.bn-go .bg-ico {
+  flex: none; width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.7); color: var(--green-700);
+}
+.bn-go.dark .bg-ico { background: rgba(255, 255, 255, 0.14); color: #a8e6a1; }
+.bn-go .bg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bn-go .bg-title { font-size: 13.5px; font-weight: 700; }
+.bn-go .bg-text { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+.bn-go.dark .bg-text { color: var(--dark-ink); }
+.bn-go .bg-arrow { flex: none; opacity: 0.55; }
+
+/* staggered slide-in for lists and product grids (replays on filter/search) */
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.prod-grid > *, #diseaseList > *, #orderList > *, #cartList > *, #caseList > *, #scanList > *, #cropRows > * {
+  animation: riseIn 0.34s ease both;
+}
+.prod-grid > *:nth-child(1), #diseaseList > *:nth-child(1) { animation-delay: 0.02s; }
+.prod-grid > *:nth-child(2), #diseaseList > *:nth-child(2) { animation-delay: 0.05s; }
+.prod-grid > *:nth-child(3), #diseaseList > *:nth-child(3) { animation-delay: 0.08s; }
+.prod-grid > *:nth-child(4), #diseaseList > *:nth-child(4) { animation-delay: 0.11s; }
+.prod-grid > *:nth-child(5), #diseaseList > *:nth-child(5) { animation-delay: 0.14s; }
+.prod-grid > *:nth-child(6), #diseaseList > *:nth-child(6) { animation-delay: 0.17s; }
+.prod-grid > *:nth-child(7) { animation-delay: 0.2s; }
+.prod-grid > *:nth-child(8) { animation-delay: 0.23s; }
+.prod-grid > *:nth-child(9) { animation-delay: 0.26s; }
+.prod-grid > *:nth-child(10) { animation-delay: 0.29s; }
+.prod-grid > *:nth-child(n+11) { animation-delay: 0.32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .ripple { display: none; }
+}
