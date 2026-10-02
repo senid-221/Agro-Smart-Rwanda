@@ -1,7 +1,7 @@
 // AgroSmart Rwanda — Scan (camera stage + result sheet), matching the UI mockup.
 (function () {
 const { CROPS } = AS
-const { loadImageFromFile, analyzeImageElement, runDiagnosis } = AS
+const { loadImageFromFile } = AS
 
 let stream = null
 let torchOn = false
@@ -276,8 +276,9 @@ AS.renderScan = function (container, app) {
     })
   }
 
-  // ONE paid AI call per scan: only when the remote provider is configured.
-  // Returns { findings, isPlant, message } or null (on-device result still shows).
+  // ONE live AI call per scan, only when the remote provider is configured.
+  // Returns { findings, isPlant, message } or null when the real AI is not
+  // available (the caller then shows an honest "AI unavailable" sheet).
   const callAnalyze = async function (imgEl) {
     const prov = (AS.PROVIDER && AS.PROVIDER.get && AS.PROVIDER.get()) || { mode: 'builtin' }
     if (prov.mode !== 'remote') return null
@@ -290,7 +291,11 @@ AS.renderScan = function (container, app) {
     } catch (e) { return null }
   }
 
-  const runAnalysis = async function (imgEl, isVideo) {
+  // The scan result IS the real Crop AI Doctor (server-side vision model). We do
+  // not run any on-device colour guess: either the live AI analysed the photo, it
+  // saw no plant, or it is unavailable — and in that last case we say so honestly
+  // instead of inventing a disease name and confidence number.
+  const runAnalysis = async function (imgEl) {
     if (analyzing) return
     if (!selectedCrop) { alert(tr('scan_error_crop')); return }
     analyzing = true
@@ -302,27 +307,24 @@ AS.renderScan = function (container, app) {
     fx.innerHTML = '<div class="scan-ring"></div>'
     fx.hidden = false
     const stopFx = AS.lottie(fx.querySelector('.scan-ring'), 'lottie/scan-rings.json')
+    // Cycle honest status lines while the one live AI call runs.
+    const steps = tr('scan_steps_analyzing') || []
+    let si = 0
+    const stepTimer = setInterval(() => {
+      if (steps.length) { setPill(steps[si % steps.length]); si++ }
+    }, 1000)
     let shown = false
     try {
-      const ratios = await analyzeImageElement(imgEl, isVideo)
-      // The real vision call and the on-device colour diagnosis run together.
-      const [aiRes, result] = await Promise.all([
-        callAnalyze(imgEl),
-        runDiagnosis(ratios, selectedCrop, { steps: tr('scan_steps_analyzing'), onStep: s => setPill(s), totalMs: 2400 })
-      ])
-      // The AI saw no plant: never show a crop diagnosis for a non-plant photo.
-      if (aiRes && aiRes.isPlant === false) {
-        showNotPlantSheet(aiRes.message)
-        shown = true
-        return
-      }
-      result.aiFindings = aiRes ? aiRes.findings : null
-      lastResult = result
-      showSheet(result)
+      const aiRes = await callAnalyze(imgEl)
+      if (aiRes && aiRes.isPlant === false) { showNotPlantSheet(aiRes.message); shown = true; return }
+      if (aiRes && aiRes.findings) { showAiSheet(aiRes.findings); shown = true; return }
+      showAiUnavailableSheet()
       shown = true
     } catch (e) {
-      alert(tr('scan_error_type'))
+      showAiUnavailableSheet()
+      shown = true
     } finally {
+      clearInterval(stepTimer)
       stopFx()
       fx.hidden = true
       fx.innerHTML = ''
@@ -330,7 +332,7 @@ AS.renderScan = function (container, app) {
       pillBtn.disabled = false
       autoFired = false; readyStreak = 0; prevGray = null
       setPill(hasLive() ? tr('scan_pill_ready') : tr('scan_gallery'))
-      // Only resume the live HUD if we did not open the result sheet.
+      // Only resume the live HUD if we did not open a result sheet.
       if (hasLive() && !shown) startHud()
     }
   }
@@ -362,25 +364,11 @@ AS.renderScan = function (container, app) {
     }
   }
 
-  // ---------- result sheet ----------
-  const showSheet = function (result) {
-    const healthy = result.healthy || !result.best
-    const d = healthy ? null : result.best.disease
+  // ---------- result sheet (real Crop AI Doctor findings) ----------
+  const showAiSheet = function (findings) {
     const crop = CROPS[selectedCrop] || {}
-    const conf = healthy ? null : result.best.confidence
-    const sevCls = d ? 'sev-' + d.severity : 'sev-low'
-
-    if (healthy) {
-      app.addHistory({ diseaseId: null, confidence: null, crop: selectedCrop })
-    } else {
-      app.addHistory({ diseaseId: d.id, confidence: conf, crop: selectedCrop })
-    }
-
-    // Real AI vision findings (one call per scan). Falls back to a note when the
-    // remote model is not configured, so we never invent an "AI" narrative.
-    const aiBlock = result.aiFindings
-      ? `<div class="ai-findings"><div class="af-head">${AS.esc(tr('scan_ai_findings'))}</div><div class="af-body">${AS.esc(result.aiFindings)}</div></div>`
-      : `<div class="ai-note">${AS.esc(tr('scan_ai_unavailable'))}</div>`
+    lastResult = { crop: selectedCrop, findings }
+    app.addHistory({ diseaseId: null, confidence: null, crop: selectedCrop })
 
     // Field conditions: live weather (filled async) + RAB guide rates for the crop.
     const soil = AS.soilFor(selectedCrop)
@@ -403,56 +391,35 @@ AS.renderScan = function (container, app) {
         <div class="sheet-handle"></div>
         <div class="sh-head">
           <div style="min-width:0">
-            <div class="sh-title">${AS.esc(healthy ? tr('result_healthy') : d.name[lang])}</div>
-            ${healthy ? `<div class="sh-sci">${AS.esc(crop[lang] || '')}</div>` : `<div class="sh-sci">${AS.esc(d.sci)}</div>`}
+            <div class="sh-title">${AS.esc(tr('scan_ai_title'))}</div>
+            <div class="sh-sci">${AS.esc(crop[lang] || selectedCrop)}</div>
           </div>
-          ${healthy ? '' : `<span class="badge ${sevCls}">${AS.esc(tr('sev_' + d.severity))}</span>`}
+          <span class="badge sev-low">${AS.icon('checkc', 13)} ${AS.esc(tr('scan_ai_live_badge'))}</span>
         </div>
-        ${healthy ? '' : `<div class="sh-conf">${AS.icon('checkc', 15)}${Math.round(conf)}% ${AS.esc(tr('result_confidence'))}</div>`}
         <div class="kv-grid">
           <div class="kv"><div class="k">${AS.esc(tr('scan_kv_crop'))}</div><div class="v">${AS.esc(crop[lang] || selectedCrop)}</div></div>
           <div class="kv"><div class="k">${AS.esc(tr('scan_kv_where'))}</div><div class="v">${AS.esc(AS.district(prefs.district)[lang])}</div></div>
-          ${healthy ? '' : `<div class="kv" style="grid-column:1/-1"><div class="k">${AS.esc(tr('result_cause'))}</div><div class="v" style="font-size:12.5px;font-weight:500;color:var(--text-soft)">${AS.esc(d.cause[lang])}</div></div>`}
         </div>
-        ${healthy ? `
-          <div class="rec-head">${AS.icon('sprout', 18)}${AS.esc(tr('scan_rec_healthy'))}</div>
-          <div class="rec-body">${AS.esc(tr('result_healthy_desc'))}</div>` : `
-          <div class="rec-head">${AS.icon('sprout', 18)}${AS.esc(tr('scan_rec_action'))}</div>
-          <div class="rec-body">${AS.esc((d.treatment[lang] || [])[0] || '')}</div>
-          ${result.alternates && result.alternates.length ? `
-            <div class="alt-title">${AS.esc(tr('result_other_possibilities'))}</div>
-            ${result.alternates.map(m => `
-              <button class="list-row" data-disease="${m.disease.id}">
-                <span class="body"><span class="name">${AS.esc(m.disease.name[lang])}</span><span class="meta">${m.confidence}%</span></span>
-                <span class="arrow">${AS.icon('arrowr', 16)}</span>
-              </button>`).join('')}` : ''}`}
-        ${aiBlock}
+        <div class="ai-findings"><div class="af-head">${AS.esc(tr('scan_ai_findings'))}</div><div class="af-body">${AS.esc(findings)}</div></div>
         ${conditionsHtml}
         <div class="sheet-actions">
           <button class="btn-ghost" id="saveBtn">${AS.esc(tr('scan_save'))}</button>
-          <button class="btn-solid" id="planBtn">${AS.esc(healthy ? tr('result_scan_again') : tr('scan_treatment_plan'))}</button>
+          <button class="btn-solid" id="doctorBtn">${AS.esc(tr('scan_ask_doctor'))}</button>
         </div>
         <p class="danger-note">${AS.esc(tr('result_disclaimer'))}</p>
       </div>`
 
     const sheet = sheetHost.querySelector('#sheet')
-    sheet.querySelectorAll('[data-disease]').forEach(b => {
-      b.onclick = () => { AS.stopCamera(); app.go('disease', { id: b.dataset.disease }) }
-    })
-    sheet.querySelector('#planBtn').onclick = () => {
-      if (healthy) { AS.stopCamera(); app.go('scan'); return }
-      AS.stopCamera()
-      app.go('disease', { id: d.id })
-    }
+    sheet.querySelector('#doctorBtn').onclick = () => { AS.stopCamera(); app.go('assistant') }
     const saveBtn = sheet.querySelector('#saveBtn')
     saveBtn.onclick = async function () {
       saveBtn.disabled = true
       saveBtn.textContent = tr('scan_saving')
       await AS.api.post('/scans', {
         crop: selectedCrop,
-        disease: healthy ? null : d.id,
-        confidence: healthy ? null : conf,
-        meta: { district: prefs.district, source: hasLive() ? 'camera' : 'gallery' }
+        disease: null,
+        confidence: null,
+        meta: { district: prefs.district, source: hasLive() ? 'camera' : 'gallery', findings: String(findings).slice(0, 500) }
       })
       saveBtn.textContent = tr('scan_saved')
       saveBtn.style.color = 'var(--green-700)'
@@ -463,6 +430,36 @@ AS.renderScan = function (container, app) {
     if (vf) vf.style.opacity = '0.25'
 
     fillConditions()
+  }
+
+  // The live AI could not analyse the photo (provider not remote, or the call
+  // failed). We never fall back to a fabricated on-device diagnosis — just tell
+  // the farmer plainly and let them try again.
+  const showAiUnavailableSheet = function () {
+    lastResult = null
+    sheetHost.innerHTML = `
+      <div class="sheet" id="sheet">
+        <div class="sheet-handle"></div>
+        <div class="notplant">
+          <div class="np-ico">${AS.icon('warn', 40)}</div>
+          <div class="np-title">${AS.esc(tr('scan_ai_offline_title'))}</div>
+          <div class="np-body">${AS.esc(tr('scan_ai_offline_body'))}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="closeAu">${AS.esc(tr('scan_close'))}</button>
+          <button class="btn-solid" id="rescanAu">${AS.esc(tr('result_scan_again'))}</button>
+        </div>
+      </div>`
+    const sheet = sheetHost.querySelector('#sheet')
+    const dismiss = () => {
+      sheetHost.innerHTML = ''
+      const vf = $('#vf')
+      if (vf) vf.style.opacity = ''
+    }
+    sheet.querySelector('#closeAu').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    sheet.querySelector('#rescanAu').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    const vf = $('#vf')
+    if (vf) vf.style.opacity = '0.25'
   }
 
   // The AI found no plant in the photo. No crop, no diagnosis, no history entry —

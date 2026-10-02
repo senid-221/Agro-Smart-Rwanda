@@ -102,6 +102,10 @@ AS.renderHome = function (container, app) {
         <span class="tc-ico community">${AS.icon('user', 22)}</span>
         <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_community'))}</span><span class="tc-desc">${AS.esc(tr('tool_community_d'))}</span></span>
       </button>
+      <button class="tool-card" data-go="map">
+        <span class="tc-ico wx">${AS.icon('map', 22)}</span>
+        <span class="tc-body"><span class="tc-title">${AS.esc(tr('tool_map'))}</span><span class="tc-desc">${AS.esc(tr('tool_map_d'))}</span></span>
+      </button>
     </div>
 
     <div class="sec-head">

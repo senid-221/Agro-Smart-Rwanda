@@ -1,4 +1,4 @@
-const CACHE = 'agrosmart-v43'
+const CACHE = 'agrosmart-v44'
 const ASSETS = [
   '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png', '/icon-192.png', '/icon-512.png',
   '/js/app.js', '/js/ui.js', '/js/i18n.js', '/js/db.js', '/js/custom.js', '/js/api.js', '/js/ai.js', '/js/research.js', '/js/engine/detector.js',
@@ -6,7 +6,7 @@ const ASSETS = [
   '/js/screens/home.js', '/js/screens/scan.js', '/js/screens/learn.js',
   '/js/screens/library.js', '/js/screens/fertilizer.js', '/js/screens/store.js',
   '/js/screens/assistant.js', '/js/screens/case.js', '/js/screens/dashboard.js', '/js/screens/alerts.js',
-  '/js/screens/weather.js', '/js/screens/community.js', '/js/screens/expert.js',
+  '/js/screens/weather.js', '/js/screens/map.js', '/js/screens/community.js', '/js/screens/expert.js',
   '/js/screens/admin.js', '/js/screens/settings.js'
 ]
 

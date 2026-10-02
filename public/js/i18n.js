@@ -55,6 +55,8 @@ AS.T = {
   tool_weather_d: { en: 'Live forecast for your region', rw: 'Iteganyagihe rizima ry\'akarere kawe' },
   tool_community: { en: 'Community', rw: 'Umuryango' },
   tool_community_d: { en: 'Ask farmers, share answers', rw: 'Baza abahinzi, sangira ibisubizo' },
+  tool_map: { en: 'Farm Map', rw: 'Ikarita' },
+  tool_map_d: { en: 'Your location, district & cases on a real map', rw: 'Aho uri, akarere n\'ibibazo ku ikarita nyayo' },
   home_discover: { en: 'Discover Agro AI', rw: 'Menya Agro AI' },
   discover_scan_t: { en: 'See a sick plant? Scan it.', rw: 'Urabona igihingwa kirwaye? Gisuzume.' },
   discover_scan_d: { en: 'The camera reads the leaf and the AI names the disease and the medicine.', rw: 'Kamera isoma ibabi hanyuma AI ikavuga indwara n\'umuti.' },
@@ -76,8 +78,8 @@ AS.T = {
   scan_start: { en: 'Analyze with AI', rw: 'Suzuma na AI' },
   scan_analyzing: { en: 'AI is analyzing…', rw: 'AI irasuzuma…' },
   scan_steps_analyzing: {
-    en: ['Reading image…', 'Detecting leaf color patterns…', 'Matching against Rwanda disease database…', 'Preparing diagnosis & treatment…'],
-    rw: ['Gusoma ishusho…', 'Kubona amabara y\'amababi…', 'Kugereranya n\'urutonde rw\'indwara zo mu Rwanda…', 'Gutegura igisubizo n\'umuti…']
+    en: ['Connecting to the Crop AI Doctor…', 'Analysing your photo…', 'Checking against Rwanda crop knowledge…', 'Preparing advice & treatment…'],
+    rw: ['Guhuza na Muganga AI w\'ibihingwa…', 'Gusesengura ifoto yawe…', 'Kugereranya n\'ubumenyi bw\'ibihingwa mu Rwanda…', 'Gutegura inama n\'umuti…']
   },
   scan_error_type: { en: 'Please choose an image (JPG/PNG) or a short video file.', rw: 'Hitamo ifoto (JPG/PNG) cyangwa video ngufi.' },
   scan_error_crop: { en: 'Please select which crop this is first.', rw: 'Banze uhitemo igihingwa.' },
@@ -98,7 +100,12 @@ AS.T = {
   hud_c_sharp: { en: 'Sharp', rw: 'Isobanutse' },
   hud_c_light: { en: 'Light', rw: 'Urumuri' },
   scan_ai_findings: { en: 'AI scan findings', rw: 'Ibyo AI yabonye' },
-  scan_ai_unavailable: { en: 'Live AI is unavailable right now — showing the on-device colour analysis.', rw: 'AI y\'ako kanya ntiboneka ubu — turakwereka isesengura ry\'amabara rya telefone.' },
+  scan_ai_title: { en: 'Crop AI Doctor', rw: 'Muganga AI w\'Ibihingwa' },
+  scan_ai_live_badge: { en: 'Live AI', rw: 'AI ako kanya' },
+  scan_ask_doctor: { en: 'Ask the Doctor', rw: 'Baza Muganga AI' },
+  scan_ai_unavailable: { en: 'Live AI is unavailable right now.', rw: 'AI y\'ako kanya ntiboneka ubu.' },
+  scan_ai_offline_title: { en: 'Live AI unavailable', rw: 'AI ntiboneka' },
+  scan_ai_offline_body: { en: 'The Crop AI Doctor could not analyse this photo right now. Check your connection and try again — we never guess a diagnosis without the real AI looking at your plant.', rw: 'Muganga AI w\'ibihingwa ntabwo yabashije gusesengura iyi foto ubu. Reba interineti yawe wongere ugerageze — ntitwigera dukeka indwara tutarebye igihingwa cyawe na AI nyayo.' },
   scan_not_plant_title: { en: 'This is not a plant', rw: 'Iki si igihingwa' },
   scan_not_plant: { en: 'This photo does not show a plant or crop. Please scan the actual plant — take a clear, close photo of the affected leaf, stem or fruit so the AI can help.', rw: 'Iyi foto ntabwo irimo igihingwa cyangwa ikimera. Nyamuneka suzuma igihingwa nyirizina — fata ifoto isobanutse yegereye y\'ibabi, ishami cyangwa umusaruro byagizweho ingaruka kugira ngo AI igufashe.' },
   scan_close: { en: 'Close', rw: 'Funga' },
@@ -561,6 +568,22 @@ AS.T = {
   risk_high: { en: 'High', rw: 'Bikomeye' },
   risk_medium: { en: 'Moderate', rw: 'Biringaniye' },
   risk_low: { en: 'Low', rw: 'Byoroshye' },
+
+  // map screen (real Leaflet + OpenStreetMap)
+  map_title: { en: 'Farm Map', rw: 'Ikarita y\'Umurima' },
+  map_gps_hint: { en: 'Tap to plot your exact location', rw: 'Kanda ngo twerekane aho uherereye nyako' },
+  map_use_gps: { en: 'My location', rw: 'Aho ndi' },
+  map_locating: { en: 'Finding your location…', rw: 'Turashaka aho uri…' },
+  map_region: { en: 'Jump to district', rw: 'Jya mu karere' },
+  map_unavailable: { en: 'The map could not load. Check your connection and reopen the Farm Map.', rw: 'Ikarita ntabwo yabashije kwiyerekana. Reba interineti wongere ufungure Ikarita.' },
+  map_lg_you: { en: 'You', rw: 'Wowe' },
+  map_lg_district: { en: 'District', rw: 'Akarere' },
+  map_lg_case: { en: 'Crop case', rw: 'Ikibazo cy\'igihingwa' },
+  map_cases: { en: 'Your crop health cases', rw: 'Ibibazo by\'ubuzima bw\'ibihingwa byawe' },
+  map_loading: { en: 'Loading your cases…', rw: 'Turapakira ibibazo byawe…' },
+  map_no_cases: { en: 'No crop health cases yet. Scan a plant or ask the Crop AI Doctor to start one.', rw: 'Nta kibazo cy\'ubuzima bw\'igihingwa kiraboneka. Suzuma igihingwa cyangwa ubaze Muganga AI gitangire.' },
+  map_no_location: { en: 'No district recorded', rw: 'Nta karere kabitswe' },
+  map_source: { en: 'Map data © OpenStreetMap contributors. Only real locations are plotted — your live GPS, the district capital, and cases at the district they were recorded in. We never invent a coordinate.', rw: 'Amakuru y\'ikarita © OpenStreetMap. Aho nyaho gusa ni ho herekanwa — GPS yawe, umurwa mukuru w\'akarere, n\'ibibazo mu karere byabitswemo. Ntitwigera duhimba aho.' },
 
   // community Q&A
   cm_title: { en: 'Community', rw: 'Umuryango' },

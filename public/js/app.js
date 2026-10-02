@@ -5,7 +5,7 @@ const {
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
   renderAssistant, renderCase, renderDashboard, renderAdmin, renderAlerts, renderWeather,
-  renderCommunity, renderExpert
+  renderCommunity, renderExpert, renderMap
 } = AS
 
 const state = {
@@ -39,6 +39,7 @@ const ROUTES = {
   case: { screen: 'assistant', render: c => renderCase(c, app, state.route.params.id) },
   dashboard: { screen: 'analytics', render: c => renderDashboard(c, app) },
   weather: { screen: 'weather', render: c => renderWeather(c, app) },
+  map: { screen: 'map', render: c => renderMap(c, app) },
   community: { screen: 'community', render: c => renderCommunity(c, app) },
   expert: { screen: 'expert', render: c => renderExpert(c, app) },
   admin: { screen: 'admin', render: c => renderAdmin(c, app) },
@@ -57,6 +58,7 @@ const ROUTE_TITLE = {
   fertilizer: 'fert_title', fertDetail: 'fert_title',
   store: 'store_title', cart: 'store_cart', orders: 'store_orders',
   weather: 'wx_title',
+  map: 'map_title',
   community: 'cm_title', expert: 'ex_title',
   settings: 'nav_settings'
 }

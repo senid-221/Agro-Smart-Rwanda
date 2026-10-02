@@ -442,6 +442,18 @@ body {
 .wd-temp i { font-size: 12px; font-style: normal; color: var(--text-soft); }
 .wd-rain { display: flex; align-items: center; gap: 3px; flex: none; font-size: 11.5px; font-weight: 700; color: #2f6bd8; width: 46px; justify-content: flex-end; }
 
+/* farm map (real Leaflet + OpenStreetMap) */
+.map-shell { position: relative; margin-top: 12px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: #e9ecef; }
+.map-shell #map { height: 46vh; min-height: 280px; width: 100%; z-index: 0; }
+.map-none { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--text-soft); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; padding: 0 2px; }
+.map-legend > span { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-soft); }
+.map-legend .lg { width: 12px; height: 12px; border-radius: 50%; flex: none; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.map-legend .lg-you { background: #2f80ed; }
+.map-legend .lg-dist { background: var(--green-700); }
+.map-legend .lg-case { background: #e74c3c; }
+.leaflet-container { font-family: inherit; }
+
 /* ---------- scan result sheet ---------- */
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
