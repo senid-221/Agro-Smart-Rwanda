@@ -96,15 +96,89 @@ const PROBLEM_WORDS = [
   'yellow', 'wilt', 'wilting', 'blight', 'pest', 'insect', 'insects', 'fungus',
   'mould', 'mold', 'lesion', 'necrosis', 'stunted', 'aphid', 'worm', 'rust'
 ]
+// Kinyarwanda sickness/pest stems matched as substrings so every conjugation is
+// caught (urwaye/kirwaye/zirarwaye/bararwaye → 'rwaye'; indwara → 'ndwara').
+const SICK_STEMS = ['rwaye', 'ndwara', 'onnyi', 'dukoko', 'borera', 'nyunyuka']
 function looksLikeProblem(message, cropId) {
-  const hay = ' ' + String(message || '').toLowerCase().replace(/[^a-z']+/g, ' ') + ' '
+  const raw = String(message || '').toLowerCase().replace(/[^a-z']+/g, ' ')
+  const hay = ' ' + raw + ' '
   if (PROBLEM_WORDS.some(w => hay.includes(' ' + w + ' '))) return true
+  if (SICK_STEMS.some(s => raw.includes(s))) return true
   return cropId ? knowledge.detectDiseases(message, cropId).length > 0 : false
+}
+
+// Concrete symptom descriptors. When the farmer actually describes what they see
+// (colour, spots, wilting, holes, mould, a named pest…) we have enough to reason
+// about; a bare "my crop is sick" does NOT count and must be met with a photo
+// request instead of a guess.
+const SYMPTOM_WORDS = [
+  'spot', 'spots', 'lesion', 'lesions', 'yellow', 'yellowing', 'white', 'brown',
+  'black', 'grey', 'gray', 'wilt', 'wilting', 'drooping', 'curl', 'curled',
+  'curling', 'hole', 'holes', 'eaten', 'chewed', 'rot', 'rotting', 'mould',
+  'mold', 'powdery', 'blister', 'canker', 'dead', 'dry', 'dried', 'necrosis',
+  'necrotic', 'stunted', 'frass', 'eggs', 'worm', 'worms', 'caterpillar',
+  'larvae', 'aphid', 'aphids', 'whitefly', 'blight', 'rust', 'mildew', 'ooze',
+  'gall', 'galls', 'swollen', 'mottled', 'streak', 'streaks', 'webbing',
+  'umuhondo', 'umuhindo', 'ibara', 'amabara', 'ududomo', 'utudomo', 'ibisebe',
+  'ibikomere', 'kubora', 'kunyunyuka', 'kwama', 'imyobo', 'udukoko', 'imungu',
+  'ibinyugunyugu', 'ishwagara', 'urubura'
+]
+// True when the farmer gave a real, describable symptom (colour, spots, wilting,
+// holes, mould, a named pest…) — enough to reason about without a photo first.
+// Deliberately lexicon-only: knowledge.detectDiseases matches on the crop name
+// alone (e.g. "inyanya" appears in a tomato disease's symptoms), so it would
+// wrongly count a bare "my tomatoes are sick" as a described symptom.
+function hasSpecificSymptom(message) {
+  const hay = ' ' + String(message || '').toLowerCase().replace(/[^a-z']+/g, ' ') + ' '
+  return SYMPTOM_WORDS.some(w => hay.includes(' ' + w + ' '))
+}
+
+// Localised display name for a crop id (used in the photo-request reply).
+function cropName(cropId, lang) {
+  if (!cropId) return ''
+  const c = (knowledge.load().crops || {})[cropId]
+  if (!c) return ''
+  return (lang === 'en' ? (c.en || c.rw) : (c.rw || c.en)) || ''
+}
+
+// The deterministic "I can't see it — send a photo" reply. Returned WITHOUT
+// calling the model when a farmer reports a sick plant but attached no photo and
+// described no symptoms, so the Doctor never invents a diagnosis for a plant it
+// has not looked at (and no paid AI call is spent).
+function photoRequest(lang, cropId) {
+  const name = cropName(cropId, lang)
+  if (lang === 'en') {
+    const crop = name || 'the plant'
+    return 'Send me a clear photo of ' + crop + ' so I can see what is wrong — show the affected leaf, branch, stem or flower. Once I see it I will tell you what it is and how to treat it.\n\n' +
+      'If you cannot send a photo, describe exactly what you see: which part is affected, the colour, any spots, holes, wilting or mould, how it started and how it is spreading, and your district.'
+  }
+  const crop = name || 'ikimera'
+  return "Ohereza ifoto isobanutse y'" + crop + ' ndebe icyo kirwaye — wereke ikibabi, ishami, umuhimba cyangwa indabo byagizweho ingaruka. Nimara kuyibona nzakubwira neza icyo ari cyo n\u2019uko wabivura.\n\n' +
+    'Niba udashobora kohereza ifoto, sobanura neza ibyo ubona: igice cyagizweho ingaruka, ibara, niba hari ududomo, imyobo, kunyunyuka cyangwa kubora, uko byatangiye n\u2019uko biri gukwira, n\u2019akarere uherereyemo.'
 }
 
 // Core Doctor turn: research → build prompt (case + history + research + vision)
 // → call the model → persist conversation, case observation and research record.
 async function doctorTurn(userId, { message, lang, ctx = {}, kind = 'report', statusChange = '' }) {
+  // Evidence gate (deterministic): a farmer reporting a sick plant with no photo
+  // and no described symptoms gets asked for a photo first — never a guess. Skipped
+  // when this turn continues an existing case (ctx.caseId) or already carries a
+  // scan/photo result.
+  const earlyCrop = knowledge.detectCrop(message)
+  const hasPhoto = !!(ctx && ctx.scan && String(ctx.scan).trim())
+  if (!ctx.caseId && !hasPhoto && looksLikeProblem(message, earlyCrop) && !hasSpecificSymptom(message, earlyCrop)) {
+    const ask = photoRequest(lang, earlyCrop)
+    await query(
+      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, NULL)',
+      [userId, 'user', message]
+    )
+    await query(
+      'INSERT INTO ai_messages (user_id, role, content, case_id) VALUES ($1, $2, $3, NULL)',
+      [userId, 'assistant', ask]
+    )
+    return { text: ask, caseId: null, cropId: earlyCrop, sources: [], confidence: 'low', emergency: { emergency: false, reason: '' }, needPhoto: true }
+  }
+
   const res = await research.research(message, lang)
   const cropId = res.cropId
   const isHealthProblem = looksLikeProblem(message, cropId)
