@@ -100,6 +100,26 @@ const app = {
     if (r.error) return r.error
     return app._session(r)
   },
+  // Phone + 6-digit passcode login (National-ID-registered farmers).
+  async loginPhone(phone, passcode) {
+    const r = await AS.api.post('/auth/login', { phone, passcode })
+    if (r.error === 'notfound') return 'notfound'
+    if (r.error === 'badpass') return 'badpass'
+    if (r.error === 'google_only') return 'google_only'
+    if (r.error === 'bad_phone') return 'bad_phone'
+    if (r.error) return r.error
+    return app._session(r)
+  },
+  // National ID + mobile + 6-digit passcode registration.
+  async register(nationalId, phone, passcode, name) {
+    const r = await AS.api.post('/auth/register', { nationalId, phone, passcode, name: name || '' })
+    if (r.error === 'exists') return 'exists_id'
+    if (r.error === 'bad_id') return 'bad_id'
+    if (r.error === 'bad_phone') return 'bad_phone'
+    if (r.error === 'weak_password') return 'weak'
+    if (r.error) return r.error
+    return app._session(r)
+  },
   // Admin tab: email + password, requires the admin role.
   async loginAdmin(email, password) {
     const r = await AS.api.post('/auth/login', { email, password, admin: true })

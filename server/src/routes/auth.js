@@ -12,6 +12,10 @@ const clean = s => String(s == null ? '' : s).trim()
 const normPhone = s => clean(s).replace(/[\s-]/g, '')
 const normEmail = s => clean(s).toLowerCase()
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// A Rwandan national ID is 16 digits; a mobile number is 07xxxxxxxx / +2507xxxxxxxx.
+const NATIONAL_ID_RE = /^\d{16}$/
+const PHONE_RE = /^(\+?250|0)7\d{8}$/
+const PASSCODE_RE = /^\d{6}$/
 
 // Google Identity Services verification client (lazy: the server still boots and
 // email auth still works if google-auth-library is not installed yet).
@@ -67,6 +71,32 @@ router.post('/signup', async (req, res) => {
   res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
 })
 
+// POST /api/auth/register  — National ID + mobile number + 6-digit passcode.
+// This is the farmer-facing sign-up: no email is required, and the resulting
+// account signs in with phone + passcode only.
+router.post('/register', async (req, res) => {
+  const nationalId = clean(req.body.nationalId || req.body.id)
+  const phone = normPhone(req.body.phone)
+  const passcode = String(req.body.passcode || req.body.pin || '')
+  const name = clean(req.body.name)
+
+  if (!NATIONAL_ID_RE.test(nationalId)) return res.status(400).json({ error: 'bad_id' })
+  if (!PHONE_RE.test(phone)) return res.status(400).json({ error: 'bad_phone' })
+  if (!PASSCODE_RE.test(passcode)) return res.status(400).json({ error: 'weak_password' })
+
+  // national_id is UNIQUE in the schema.
+  if (await findByNationalId(nationalId)) return res.status(409).json({ error: 'exists' })
+
+  const hash = await bcrypt.hash(passcode, 10)
+  const inserted = await query(
+    `INSERT INTO users (national_id, phone, password_hash, name, auth_provider, role)
+     VALUES ($1, $2, $3, $4, 'password', 'user') RETURNING *`,
+    [nationalId, phone, hash, name]
+  )
+  const row = inserted[0]
+  res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
+})
+
 // POST /api/auth/login  — email + password (primary). Legacy national ID + phone
 // is still accepted so older/seeded accounts are not locked out. admin:true
 // additionally requires the admin role.
@@ -88,6 +118,20 @@ router.post('/login', async (req, res) => {
 
   const nationalId = clean(req.body.nationalId || req.body.id)
   const phone = normPhone(req.body.phone)
+
+  // Phone + passcode: the primary login for National-ID-registered farmers.
+  if (phone && !nationalId) {
+    if (!PHONE_RE.test(phone)) return res.status(400).json({ error: 'bad_phone' })
+    const row = await findByPhone(phone)
+    if (!row) return res.status(404).json({ error: 'notfound' })
+    // A Google-only account has no passcode — it must sign in with Google.
+    if (!row.password_hash) return res.status(400).json({ error: 'google_only' })
+    const ok = await bcrypt.compare(password, row.password_hash)
+    if (!ok) return res.status(401).json({ error: wantAdmin ? 'badpin' : 'badpass' })
+    if (wantAdmin && row.role !== 'admin') return res.status(403).json({ error: 'badpin' })
+    return res.json({ token: sign({ id: row.id, role: row.role }), user: publicUser(row) })
+  }
+
   if (!nationalId || !phone) return res.status(400).json({ error: 'missing' })
 
   const row = await findByNationalId(nationalId)
