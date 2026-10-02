@@ -102,7 +102,9 @@ router.post('/register', async (req, res) => {
 // additionally requires the admin role.
 router.post('/login', async (req, res) => {
   const wantAdmin = !!req.body.admin
-  const password = String(req.body.password || req.body.pin || '')
+  // The app's phone+passcode login posts `passcode`; email login posts `password`;
+  // the PIN pad / admin panel post `pin`. Accept all three field names.
+  const password = String(req.body.password || req.body.pin || req.body.passcode || '')
   const email = normEmail(req.body.email)
 
   if (email) {
