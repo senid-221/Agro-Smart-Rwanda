@@ -164,8 +164,16 @@
       player = new Promise(function (resolve, reject) {
         const s = document.createElement('script')
         s.src = 'vendor/lottie_light.min.js'
-        s.onload = function () { resolve(window.lottie) }
-        s.onerror = function () { player = null; reject(new Error('lottie_unavailable')) }
+        // A cold-start or offline fetch can still fire onload with an HTML error
+        // page, so require the global to exist; otherwise drop the cached
+        // promise and let the next call retry.
+        const fail = function (why) {
+          s.remove()
+          player = null
+          reject(new Error(why))
+        }
+        s.onload = function () { window.lottie ? resolve(window.lottie) : fail('lottie_bad_payload') }
+        s.onerror = function () { fail('lottie_unavailable') }
         document.head.appendChild(s)
       })
     }
