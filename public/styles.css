@@ -327,6 +327,60 @@ body {
 .sc-chip img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; }
 .sc-chip.active { background: #fff; color: var(--green-700); }
 
+/* ---- Live AI scanner HUD ---- */
+.live-badge {
+  position: absolute; top: calc(112px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  z-index: 4; display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0, 0, 0, .45); backdrop-filter: blur(6px); color: #fff;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .6px; padding: 4px 10px; border-radius: 999px;
+}
+.live-badge[hidden] { display: none; }
+.live-badge .lb-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; animation: blink 1s infinite; }
+.scan-hud {
+  position: absolute; left: 16px; right: 16px; bottom: 158px; z-index: 4;
+  background: rgba(0, 0, 0, .42); backdrop-filter: blur(8px); border-radius: 16px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; transition: background .2s ease;
+}
+.scan-hud[hidden] { display: none; }
+.scan-hud.ready { background: rgba(46, 125, 50, .58); }
+.hud-status { color: #fff; font-size: 12.5px; font-weight: 700; text-align: center; }
+.hud-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700;
+  color: rgba(255, 255, 255, .6); background: rgba(255, 255, 255, .12); padding: 3px 8px; border-radius: 999px;
+}
+.hud-chip i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .4); }
+.hud-chip.on { color: #fff; background: rgba(255, 255, 255, .24); }
+.hud-chip.on i { background: #7ee08a; }
+.hud-bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+.hud-bar span { display: block; height: 100%; width: 0; background: #7ee08a; transition: width .18s ease; }
+
+/* ---- AI findings + field conditions in the result sheet ---- */
+.ai-findings { margin-top: 16px; background: var(--green-100); border-radius: 14px; padding: 12px 14px; }
+.ai-findings .af-head { font-size: 11.5px; font-weight: 800; color: var(--green-700); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+.ai-findings .af-body { font-size: 13px; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+.ai-note { margin-top: 16px; font-size: 11.5px; color: var(--ink-3); font-style: italic; text-align: center; }
+.cond-panel { margin-top: 16px; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.cond-title { font-size: 11.5px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.cond-wx { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-soft); }
+.cond-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.cond-row span { color: var(--text-soft); }
+.cond-row b { color: var(--text); font-weight: 700; text-align: right; }
+.cond-risk-host { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.cond-risk-label { font-size: 10.5px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .3px; }
+.cond-risk {
+  text-align: left; border: none; cursor: pointer; border-radius: 12px; padding: 9px 11px;
+  display: flex; flex-direction: column; gap: 3px; border-left: 3px solid var(--line); background: #faf9f5;
+}
+.cond-risk b { font-size: 12.5px; color: var(--text); }
+.cond-risk span { font-size: 11.5px; color: var(--text-soft); line-height: 1.4; }
+.cond-risk.high { border-left-color: #d64545; background: #fdeeee; }
+.cond-risk.medium { border-left-color: #e0862f; background: #fdf4e9; }
+.cond-risk.low { border-left-color: var(--green-700); background: var(--green-100); }
+.cond-risk.none { cursor: default; border-left-color: var(--green-700); background: var(--green-100); color: var(--green-700); font-size: 12px; font-weight: 700; }
+.cond-soil { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 5px; }
+.cond-src { font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
+
 /* ---------- scan result sheet ---------- */
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;

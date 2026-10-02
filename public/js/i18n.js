@@ -61,6 +61,37 @@ AS.T = {
   scan_error_type: { en: 'Please choose an image (JPG/PNG) or a short video file.', rw: 'Hitamo ifoto (JPG/PNG) cyangwa video ngufi.' },
   scan_error_crop: { en: 'Please select which crop this is first.', rw: 'Banze uhitemo igihingwa.' },
 
+  // live AI scanner HUD
+  scan_live: { en: 'Live AI scanning', rw: 'Gusuzuma kwa AI ako kanya' },
+  hud_start: { en: 'Point at a leaf, branch, stem or flower', rw: 'Werekeza ku ibabi, ishami, umuti cyangwa indabo' },
+  hud_dark: { en: 'Too dark — add light or turn on the flash', rw: 'Umwijima — ongera urumuri cyangwa ucane itara' },
+  hud_bright: { en: 'Too bright — move out of direct sun', rw: 'Urumuri rwinshi — vayo mu zuba rikabije' },
+  hud_noplant: { en: 'No plant detected — point at the crop', rw: 'Nta gihingwa kigaragara — werekeza ku gihingwa' },
+  hud_fill: { en: 'Move closer to fill the frame', rw: 'Egera hafi wuzuze ishusho' },
+  hud_steady: { en: 'Hold steady…', rw: 'Hagarara neza…' },
+  hud_sharp: { en: 'Blurry — keep still', rw: 'Ntabwo isobanutse — tuza' },
+  hud_ready: { en: 'Good shot — capturing…', rw: 'Ifoto nziza — turayifata…' },
+  hud_c_plant: { en: 'Plant', rw: 'Igihingwa' },
+  hud_c_fill: { en: 'Framing', rw: 'Ishusho' },
+  hud_c_steady: { en: 'Steady', rw: 'Gutuza' },
+  hud_c_sharp: { en: 'Sharp', rw: 'Isobanutse' },
+  hud_c_light: { en: 'Light', rw: 'Urumuri' },
+  scan_ai_findings: { en: 'AI scan findings', rw: 'Ibyo AI yabonye' },
+  scan_ai_unavailable: { en: 'Live AI is unavailable right now — showing the on-device colour analysis.', rw: 'AI y\'ako kanya ntiboneka ubu — turakwereka isesengura ry\'amabara rya telefone.' },
+
+  // field conditions panel (real weather + RAB guide rates only)
+  scan_conditions: { en: 'Field conditions now', rw: 'Imiterere y\'umurima ubu' },
+  cond_weather: { en: 'Weather', rw: 'Ikirere' },
+  cond_moisture: { en: 'Air moisture', rw: 'Ubuhehere bw\'umwuka' },
+  cond_water: { en: 'Rain chance (3-day)', rw: 'Amahirwe y\'imvura (iminsi 3)' },
+  cond_risk: { en: 'Disease risk', rw: 'Ibyago by\'indwara' },
+  cond_risk_none: { en: 'No elevated risk right now', rw: 'Nta byago byihariye ubu' },
+  cond_soil: { en: 'Soil & fertiliser (RAB guide rate)', rw: 'Ubutaka n\'ifumbire (igipimo cya RAB)' },
+  cond_ph: { en: 'Target pH', rw: 'pH ikenewe' },
+  cond_guide_tag: { en: 'Guide rate', rw: 'Igipimo' },
+  cond_wx_loading: { en: 'Loading live weather…', rw: 'Gutegereza ikirere…' },
+  cond_wx_fail: { en: 'Live weather unavailable.', rw: 'Ikirere ntikiboneka.' },
+
   // result
   result_diagnosis: { en: 'Diagnosis', rw: 'Igisubizo' },
   result_confidence: { en: 'AI confidence', rw: 'Ukwizera kwa AI' },
