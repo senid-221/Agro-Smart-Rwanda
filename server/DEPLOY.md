@@ -32,6 +32,7 @@ repo root.
    - `GOOGLE_CLIENT_ID` = your Google OAuth web client ID (optional)
    - `OPENAI_API_KEY` = your key (optional; enables remote AI)
    - `TAVILY_API_KEY` = your key (optional; enables live Crop Doctor research)
+   - `PAYSTACK_SECRET_KEY` + `PAYSTACK_PUBLIC_KEY` = your Paystack keys (optional; enables real mobile-money checkout — see "Mobile-money payments (Paystack)")
    - `ADMIN_EMAIL` + `ADMIN_PASSWORD` (≥ 8 chars) = the admin to auto-create on boot
 5. **Deploy**. On boot the server runs `migrate`, seeds the catalog, and ensures
    the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` — no shell needed.
@@ -46,6 +47,52 @@ Build/start used by the blueprint (Root Directory = repo root):
 > `public/sw.js` when you ship new client files.
 
 The rest of this document covers the alternative **Hostinger VPS** deployment.
+
+---
+
+## Mobile-money payments (Paystack) — store orders
+
+Checkout collects **real RWF** through Paystack (MTN MoMo / Airtel Money / card).
+The secret key lives **only** on the server (`.env` / Render) — it is never shipped to
+the app. An order is created as `pending`, the customer is redirected to Paystack's
+secure hosted checkout, and the order flips to `received` / `paid` **only** after
+Paystack confirms the charge (signed webhook, plus a client verify as a backup). If
+`PAYSTACK_SECRET_KEY` is blank, checkout stays record-intent (no charge) — the app
+never fakes a payment.
+
+> **RWF is zero-decimal on Paystack**: the order total is sent as whole RWF
+> (e.g. `10000`), *not* multiplied by 100.
+
+**Turn it on:**
+
+1. Create a Paystack account (dashboard.paystack.com) and complete business
+   verification. Your account region must be **Rwanda** so RWF + MTN/Airtel MoMo
+   channels are available.
+2. Grab your keys — **Settings → Preferences & Webhooks / API Keys & Webhooks**:
+   - Test: `sk_test_…` + `pk_test_…` (validate the flow first)
+   - Live: `sk_live_…` + `pk_live_…` (real money)
+3. Set them on the server (Render → your service → Environment, or `server/.env`):
+   ```
+   PAYSTACK_SECRET_KEY=sk_live_...        # or sk_test_... while validating
+   PAYSTACK_PUBLIC_KEY=pk_live_...        # or pk_test_...
+   PAYSTACK_CURRENCY=RWF
+   PUBLIC_APP_URL=https://agro-smart-rwanda.onrender.com
+   ```
+4. Register the webhook in the **same mode's** Paystack dashboard
+   (Settings → Preferences & Webhooks → Callback URL):
+   ```
+   https://agro-smart-rwanda.onrender.com/api/paystack/webhook
+   ```
+   Paystack signs each event with `x-paystack-signature` (HMAC-SHA512 of the raw
+   body, using your secret key); the server verifies it and rejects anything else.
+   No separate webhook secret is needed — the secret key is the signing key.
+5. Redeploy / restart. `migrate` adds the payment columns to `orders` automatically.
+6. **Validate with TEST keys first**: place a store order, complete the test charge,
+   and confirm the order shows *received* and `payment_status = paid`. Then switch to
+   LIVE keys.
+
+> Keep test and live keys separate: a `sk_test_…` charge never moves real money, and
+> the test webhook URL must be registered under the test dashboard (and live under live).
 
 ---
 

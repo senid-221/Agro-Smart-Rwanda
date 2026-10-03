@@ -56,6 +56,24 @@ module.exports = {
     maxResults: parseInt(process.env.RESEARCH_MAX_RESULTS || '5', 10),
     get enabled() { return !!this.apiKey }
   },
+  // Paystack mobile-money / card collection for store orders. The secret key
+  // lives ONLY here on the server (never shipped to the browser); it also signs
+  // the inbound webhook (HMAC-SHA512 of the raw body). RWF is a zero-decimal
+  // currency on Paystack, so `amount` is the whole-RWF integer (NOT × 100).
+  // Leave PAYSTACK_SECRET_KEY blank to run checkout as record-intent only (no
+  // live charge) — the app never fakes a payment.
+  paystack: {
+    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    baseUrl: process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co',
+    currency: process.env.PAYSTACK_CURRENCY || 'RWF',
+    // Optional channel restriction (e.g. "mobile_money,card"). Blank = every
+    // channel the merchant has enabled (Paystack then shows MTN MoMo / Airtel).
+    channels: (process.env.PAYSTACK_CHANNELS || '').split(',').map(s => s.trim()).filter(Boolean),
+    // Public app origin Paystack redirects the customer back to after payment.
+    publicUrl: process.env.PUBLIC_APP_URL || 'https://agro-smart-rwanda.onrender.com',
+    get enabled() { return !!this.secretKey }
+  },
   // Password-reset OTP policy. Codes are generated server-side and shown in the app.
   reset: {
     otpTtlSec: parseInt(process.env.OTP_TTL_SEC || '600', 10),

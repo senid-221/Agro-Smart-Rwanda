@@ -205,7 +205,33 @@ AS.renderCart = function (container, app) {
     container.querySelector('#checkoutBtn').onclick = async () => {
       const btn = container.querySelector('#checkoutBtn')
       btn.disabled = true
-      const order = await AS.api.post('/orders', { items: rows.map(r => ({ id: r.id, qty: r.qty })), total, user: app.user ? app.user.id : null })
+      btn.textContent = tr('store_processing')
+      const resp = await AS.api.post('/orders', { items: rows.map(r => ({ id: r.id, qty: r.qty })), total, user: app.user ? app.user.id : null })
+
+      if (!resp || resp.error) {
+        btn.disabled = false
+        btn.textContent = tr('store_checkout') + ' →'
+        window.alert(tr('pay_error'))
+        return
+      }
+
+      const pay = resp.payment || {}
+      if (pay.configured && pay.authorizationUrl) {
+        // Real charge: hand off to Paystack's secure hosted checkout
+        // (MTN MoMo / Airtel Money / card). Paystack redirects back to the app
+        // root with ?trxref=…; boot() picks that up and routes to Orders to verify.
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="emoji">🔒</span>
+            <b>${tr('pay_redirecting')}</b>
+            <p class="progress-note" style="margin-top:6px">${tr('pay_redirect_note')}</p>
+          </div>`
+        window.location.assign(pay.authorizationUrl)
+        return
+      }
+
+      // Payments not configured on the server: honest record-intent, no charge taken.
+      const order = resp
       container.innerHTML = `
         <div class="empty-state">
           <span class="emoji">✅</span>
@@ -217,6 +243,7 @@ AS.renderCart = function (container, app) {
       container.querySelector('#seeOrders').onclick = () => app.go('orders')
       container.querySelector('#backStore').onclick = () => app.go('store')
     }
+
   }
 
   draw()
@@ -227,13 +254,28 @@ AS.renderOrders = function (container, app) {
   const lang = app.lang
 
   const draw = async () => {
+    // Returning from Paystack? Confirm the charge with the server (authoritative)
+    // and show an honest result banner. The webhook is primary; this is the backup.
+    let banner = ''
+    const ref = window.__payReturn
+    if (ref) {
+      window.__payReturn = null
+      container.innerHTML = `<div class="empty-state"><span class="emoji">⏳</span>${tr('pay_checking')}</div>`
+      const v = await AS.api.post('/payments/verify', { reference: ref })
+      const st = v && v.status
+      if (st === 'success') banner = `<div class="pay-banner ok">${AS.icon('checkc', 18)}<span>${tr('pay_success')}</span></div>`
+      else if (st === 'pending') banner = `<div class="pay-banner wait">${AS.icon('warn', 18)}<span>${tr('pay_pending')}</span></div>`
+      else banner = `<div class="pay-banner bad">${AS.icon('warn', 18)}<span>${tr('pay_failed')}</span></div>`
+    }
+
     const orders = await AS.api.get('/orders')
-    container.innerHTML = `<div id="orderList"></div>`
+    container.innerHTML = banner + `<div id="orderList"></div>`
     const list = container.querySelector('#orderList')
     if (!orders.length) {
       list.innerHTML = `<div class="empty-state"><span class="emoji">📦</span>${tr('orders_empty')}</div>`
       return
     }
+
     orders.forEach(o => {
       const date = new Date(o.at).toLocaleDateString(lang === 'rw' ? 'rw-RW' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       const names = o.items.map(i => {

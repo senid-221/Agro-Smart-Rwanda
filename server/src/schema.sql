@@ -70,6 +70,21 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Paystack payment tracking for store orders. `reference` is OUR unique payment
+-- reference (sent to Paystack and echoed back on the webhook + redirect return).
+-- payment_status: unpaid -> paid (on a verified charge.success) or failed.
+-- amount_paid is the whole-RWF integer Paystack confirmed (RWF is zero-decimal).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS reference        VARCHAR(64);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status   VARCHAR(20) NOT NULL DEFAULT 'unpaid';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_at          TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS gateway          VARCHAR(20);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS gateway_ref      VARCHAR(64);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS gateway_response VARCHAR(255);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid      INT;
+-- One live payment reference per order (NULLs allowed for legacy record-intent rows).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_reference ON orders (reference) WHERE reference IS NOT NULL;
+
+
 CREATE TABLE IF NOT EXISTS theme (
   id   VARCHAR(16) PRIMARY KEY,
   data JSONB NOT NULL

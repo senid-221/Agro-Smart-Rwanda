@@ -335,7 +335,22 @@ AS.onUnauthorized = () => {
   render()
 }
 
+// Paystack redirects the customer back to the app root with ?trxref=…&reference=…
+// Capture it once, clean the URL, and stash the reference so the Orders screen can
+// confirm the charge with the server.
+function detectPayReturn() {
+  try {
+    const p = new URLSearchParams(window.location.search)
+    const ref = p.get('trxref') || p.get('reference')
+    if (!ref) return false
+    window.__payReturn = ref
+    window.history.replaceState({}, '', window.location.origin + window.location.pathname)
+    return true
+  } catch (e) { return false }
+}
+
 async function boot() {
+  const returned = detectPayReturn()
   // Online-only: if we have a session, refresh the server-backed cache first.
   if (state.user && AS.auth.getToken()) {
     const r = await AS.sync()
@@ -344,8 +359,11 @@ async function boot() {
       state.offline = true
     }
   }
+  // Land on Orders to verify + show the payment result after a checkout return.
+  if (returned && state.user) state.route = { name: 'orders' }
   render()
 }
+
 
 boot()
 })()

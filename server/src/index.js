@@ -14,13 +14,18 @@ const ordersRoutes = require('./routes/orders')
 const aiRoutes = require('./routes/ai')
 const adminRoutes = require('./routes/admin')
 const communityRoutes = require('./routes/community')
+const paystackWebhook = require('./routes/paystackWebhook')
 const { seedCatalog, seedSingletons } = require('./seed')
 
 const app = express()
 
 app.use(cors(config.corsOrigin ? { origin: config.corsOrigin, credentials: true } : {}))
+// Paystack webhook: PUBLIC and parsed as a RAW buffer so its HMAC-SHA512 signature
+// can be verified over the untouched body. Must run before express.json().
+app.use('/api/paystack/webhook', express.raw({ type: 'application/json' }), paystackWebhook)
 app.use(express.json({ limit: '8mb' }))
 app.use(attach)
+
 
 // --- API ---
 app.get('/api/health', async (_req, res) => {

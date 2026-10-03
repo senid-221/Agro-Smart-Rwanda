@@ -33,6 +33,19 @@ services:
         value: gpt-4o-mini
       - key: TAVILY_API_KEY
         sync: false
+      # Paystack (store-order mobile-money / card collection). Secret key stays
+      # server-side; it also signs the webhook. Leave the secret blank to run
+      # checkout as record-intent only. Start with TEST keys, then switch to LIVE.
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: PAYSTACK_CURRENCY
+        value: RWF
+      # Base origin for the Paystack webhook + post-payment redirect:
+      #   https://agro-smart-rwanda.onrender.com/api/paystack/webhook
+      - key: PUBLIC_APP_URL
+        value: https://agro-smart-rwanda.onrender.com
       # Admin auto-created on boot from these (email + password >= 8 chars).
       - key: ADMIN_EMAIL
         sync: false

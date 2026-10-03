@@ -454,6 +454,14 @@ body {
 .map-legend .lg-case { background: #e74c3c; }
 .leaflet-container { font-family: inherit; }
 
+/* ---------- payment result banner (Orders) ---------- */
+.pay-banner { display: flex; align-items: center; gap: 9px; padding: 13px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; line-height: 1.4; margin-bottom: 12px; border: 1px solid transparent; }
+.pay-banner svg { flex: none; }
+.pay-banner.ok { background: var(--green-100); color: var(--green-700); border-color: rgba(47, 138, 79, .22); }
+.pay-banner.wait { background: #fff7e6; color: #946200; border-color: rgba(148, 98, 0, .2); }
+.pay-banner.bad { background: #fdeceb; color: #b3261e; border-color: rgba(179, 38, 30, .2); }
+
+
 /* ---------- scan result sheet ---------- */
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
