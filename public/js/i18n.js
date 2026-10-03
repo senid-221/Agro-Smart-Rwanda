@@ -83,6 +83,9 @@ AS.T = {
   },
   scan_error_type: { en: 'Please choose an image (JPG/PNG) or a short video file.', rw: 'Hitamo ifoto (JPG/PNG) cyangwa video ngufi.' },
   scan_error_crop: { en: 'Please select which crop this is first.', rw: 'Banze uhitemo igihingwa.' },
+  scan_auto_crop: { en: 'Auto-detect', rw: 'AI yimenyere' },
+  scan_crop_unknown: { en: 'Crop not in catalog', rw: 'Igihingwa kitari ku rutonde' },
+  scan_crop_mismatch: { en: 'The AI identified this as %CROP% from the photo, which differs from the crop you picked.', rw: 'AI yabonye ko iyi foto ari %CROP% bitandukanye n\'igihingwa wahisemo.' },
 
   // live AI scanner HUD
   scan_live: { en: 'Live AI scanning', rw: 'Gusuzuma kwa AI ako kanya' },

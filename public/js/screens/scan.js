@@ -80,7 +80,9 @@ AS.renderScan = function (container, app) {
   const tr = app.t()
   const lang = app.lang || 'rw'
   const prefs = app.prefs()
-  let selectedCrop = CROPS[prefs.crop] ? prefs.crop : null
+  // 'auto' = let the vision model identify the crop from the photo (default).
+  // A specific id = a hint the AI still verifies against the image.
+  let selectedCrop = 'auto'
   let analyzing = false
   let lastResult = null
 
@@ -133,10 +135,23 @@ AS.renderScan = function (container, app) {
 
   // ---------- crop chips ----------
   const chipsWrap = $('#cropChips')
-  Object.entries(CROPS).forEach(([id, c]) => {
+  const makeChip = (label, imgSrc, active) => {
     const chip = document.createElement('button')
-    chip.className = 'sc-chip' + (id === selectedCrop ? ' active' : '')
-    chip.innerHTML = (c.img ? `<img src="${c.img}" alt="">` : '') + AS.esc(c[lang])
+    chip.className = 'sc-chip' + (active ? ' active' : '')
+    chip.innerHTML = (imgSrc ? `<img src="${imgSrc}" alt="">` : '') + AS.esc(label)
+    return chip
+  }
+  // "Auto" first: the AI identifies the crop from the photo instead of the
+  // farmer guessing — this is what stops wrong-crop answers.
+  const autoChip = makeChip(tr('scan_auto_crop'), '', selectedCrop === 'auto')
+  autoChip.onclick = () => {
+    selectedCrop = 'auto'
+    chipsWrap.querySelectorAll('.sc-chip').forEach(x => x.classList.remove('active'))
+    autoChip.classList.add('active')
+  }
+  chipsWrap.appendChild(autoChip)
+  Object.entries(CROPS).forEach(([id, c]) => {
+    const chip = makeChip(c[lang], c.img, id === selectedCrop)
     chip.onclick = () => {
       selectedCrop = id
       chipsWrap.querySelectorAll('.sc-chip').forEach(x => x.classList.remove('active'))
@@ -284,10 +299,13 @@ AS.renderScan = function (container, app) {
     if (prov.mode !== 'remote') return null
     try {
       const dataUrl = await elementToDataUrl(imgEl, 1024)
-      const r = await AS.api.post('/ai/analyze', { dataUrl, lang, cropHint: selectedCrop || '' })
+      const hint = selectedCrop === 'auto' ? '' : (selectedCrop || '')
+      const r = await AS.api.post('/ai/analyze', { dataUrl, lang, cropHint: hint })
       if (!r) return null
       if (r.isPlant === false) return { findings: '', isPlant: false, message: String(r.message || '') }
-      return r.findings ? { findings: String(r.findings), isPlant: true } : null
+      return r.findings
+        ? { findings: String(r.findings), isPlant: true, cropId: r.cropId || null }
+        : null
     } catch (e) { return null }
   }
 
@@ -317,7 +335,7 @@ AS.renderScan = function (container, app) {
     try {
       const aiRes = await callAnalyze(imgEl)
       if (aiRes && aiRes.isPlant === false) { showNotPlantSheet(aiRes.message); shown = true; return }
-      if (aiRes && aiRes.findings) { showAiSheet(aiRes.findings); shown = true; return }
+      if (aiRes && aiRes.findings) { showAiSheet(aiRes.findings, aiRes.cropId); shown = true; return }
       showAiUnavailableSheet()
       shown = true
     } catch (e) {
@@ -365,14 +383,25 @@ AS.renderScan = function (container, app) {
   }
 
   // ---------- result sheet (real Crop AI Doctor findings) ----------
-  const showAiSheet = function (findings) {
-    const crop = CROPS[selectedCrop] || {}
-    lastResult = { crop: selectedCrop, findings }
-    app.addHistory({ diseaseId: null, confidence: null, crop: selectedCrop })
+  let sheetCrop = null
+  const showAiSheet = function (findings, identifiedCrop) {
+    // The crop the AI actually saw wins. Fall back to a manually chosen hint.
+    // 'auto' with no identification = unknown crop (still show findings honestly).
+    const effCrop = CROPS[identifiedCrop] ? identifiedCrop
+      : (selectedCrop !== 'auto' && CROPS[selectedCrop] ? selectedCrop : null)
+    sheetCrop = effCrop
+    const crop = effCrop ? (CROPS[effCrop] || {}) : {}
+    const cropName = effCrop ? (crop[lang] || effCrop) : tr('scan_crop_unknown')
+    // Honest note when the AI's identification disagrees with the farmer's hint.
+    const mismatch = effCrop && selectedCrop !== 'auto' && selectedCrop !== effCrop
+    lastResult = { crop: effCrop, findings }
+    app.addHistory({ diseaseId: null, confidence: null, crop: effCrop })
 
     // Field conditions: live weather (filled async) + RAB guide rates for the crop.
-    const soil = AS.soilFor(selectedCrop)
-    const conditionsHtml = `
+    // Only shown when we have a concrete crop the soil/risk data is keyed by.
+    const conditionsHtml = effCrop ? (() => {
+      const soil = AS.soilFor(effCrop)
+      return `
       <div class="cond-panel">
         <div class="cond-title">${AS.esc(tr('scan_conditions'))}</div>
         <div class="cond-wx" id="condWx">${AS.esc(tr('cond_wx_loading'))}</div>
@@ -385,6 +414,7 @@ AS.renderScan = function (container, app) {
           <div class="cond-src">${AS.esc(tr('cond_guide_tag'))} · ${AS.esc(soil.src[lang])}</div>
         </div>
       </div>`
+    })() : ''
 
     sheetHost.innerHTML = `
       <div class="sheet" id="sheet">
@@ -392,14 +422,15 @@ AS.renderScan = function (container, app) {
         <div class="sh-head">
           <div style="min-width:0">
             <div class="sh-title">${AS.esc(tr('scan_ai_title'))}</div>
-            <div class="sh-sci">${AS.esc(crop[lang] || selectedCrop)}</div>
+            <div class="sh-sci">${AS.esc(cropName)}</div>
           </div>
           <span class="badge sev-low">${AS.icon('checkc', 13)} ${AS.esc(tr('scan_ai_live_badge'))}</span>
         </div>
         <div class="kv-grid">
-          <div class="kv"><div class="k">${AS.esc(tr('scan_kv_crop'))}</div><div class="v">${AS.esc(crop[lang] || selectedCrop)}</div></div>
+          <div class="kv"><div class="k">${AS.esc(tr('scan_kv_crop'))}</div><div class="v">${AS.esc(cropName)}</div></div>
           <div class="kv"><div class="k">${AS.esc(tr('scan_kv_where'))}</div><div class="v">${AS.esc(AS.district(prefs.district)[lang])}</div></div>
         </div>
+        ${mismatch ? `<div class="scan-mismatch">${AS.icon('info', 15)} ${AS.esc(tr('scan_crop_mismatch').replace('%CROP%', cropName))}</div>` : ''}
         <div class="ai-findings"><div class="af-head">${AS.esc(tr('scan_ai_findings'))}</div><div class="af-body">${AS.esc(findings)}</div></div>
         ${conditionsHtml}
         <div class="sheet-actions">
@@ -416,7 +447,7 @@ AS.renderScan = function (container, app) {
       saveBtn.disabled = true
       saveBtn.textContent = tr('scan_saving')
       await AS.api.post('/scans', {
-        crop: selectedCrop,
+        crop: effCrop,
         disease: null,
         confidence: null,
         meta: { district: prefs.district, source: hasLive() ? 'camera' : 'gallery', findings: String(findings).slice(0, 500) }
@@ -429,7 +460,7 @@ AS.renderScan = function (container, app) {
     const vf = $('#vf')
     if (vf) vf.style.opacity = '0.25'
 
-    fillConditions()
+    if (effCrop) fillConditions()
   }
 
   // The live AI could not analyse the photo (provider not remote, or the call
@@ -506,7 +537,7 @@ AS.renderScan = function (container, app) {
       <div class="cond-row"><span>${AS.esc(tr('cond_moisture'))}</span><b>${wx.rh}%</b></div>
       <div class="cond-row"><span>${AS.esc(tr('cond_water'))}</span><b>${(wx.rainProb || []).map(p => Math.round(p) + '%').join(' · ') || '—'}</b></div>`
     if (riskHost) {
-      const risks = AS.risk(wx, selectedCrop) || []
+      const risks = AS.risk(wx, sheetCrop) || []
       riskHost.innerHTML = `<div class="cond-risk-label">${AS.esc(tr('cond_risk'))}</div>` + (
         risks.length
           ? risks.slice(0, 2).map(r => `<button class="cond-risk ${r.level}" ${r.diseaseId ? `data-disease="${r.diseaseId}"` : ''}><b>${AS.esc(r.title[lang])}</b><span>${AS.esc(r.body[lang])}</span></button>`).join('')

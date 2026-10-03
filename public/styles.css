@@ -386,9 +386,10 @@ body {
 .hud-bar span { display: block; height: 100%; width: 0; background: #7ee08a; transition: width .18s ease; }
 
 /* ---- AI findings + field conditions in the result sheet ---- */
-.ai-findings { margin-top: 16px; background: var(--green-100); border-radius: 14px; padding: 12px 14px; }
-.ai-findings .af-head { font-size: 11.5px; font-weight: 800; color: var(--green-700); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+.ai-findings { margin-top: 16px; background: var(--green-100); border-radius: 14px; padding: 12px 14px; }.ai-findings .af-head { font-size: 11.5px; font-weight: 800; color: var(--green-700); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
 .ai-findings .af-body { font-size: 13px; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+.scan-mismatch { margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; background: var(--amber-100, #fff4d6); color: var(--amber-900, #7a4b00); border: 1px solid var(--amber-300, #f0c36d); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; }
+.scan-mismatch svg { flex: none; margin-top: 1px; }
 .ai-note { margin-top: 16px; font-size: 11.5px; color: var(--ink-3); font-style: italic; text-align: center; }
 .cond-panel { margin-top: 16px; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
 .cond-title { font-size: 11.5px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }

@@ -52,6 +52,37 @@ const CROP_SYNONYMS = {
   groundnut: ['ubunyobwa', 'groundnut', 'groundnuts', 'peanut', 'peanuts']
 }
 
+// A controlled crop catalog for the vision model: the exact ids the app knows,
+// with their English + Kinyarwanda names and common local aliases. The model may
+// only pick one of these ids (or 'unknown'), so a scanned photo is mapped to the
+// SAME crop keys the knowledge base, RAB guidance and soil rates are keyed by —
+// it can never invent a crop the app has no data for.
+function cropVocabulary() {
+  const { crops, guides } = load()
+  const out = []
+  const seen = {}
+  const push = (id, en, rw, aliases) => {
+    if (!id || seen[id]) return
+    seen[id] = true
+    out.push({ id, en: en || id, rw: rw || '', aliases: (aliases || []).filter(Boolean) })
+  }
+  for (const g of guides) {
+    const c = crops[g.id] || {}
+    push(g.id, (g.name && g.name.en) || c.en, (g.name && g.name.rw) || c.rw, CROP_SYNONYMS[g.id])
+  }
+  for (const [id, c] of Object.entries(crops)) push(id, c.en, c.rw, CROP_SYNONYMS[id])
+  for (const [id, syns] of Object.entries(CROP_SYNONYMS)) push(id, id, '', syns)
+  return out
+}
+
+// True when id is one of the crops the app actually has data for. Used to
+// validate whatever crop the vision model names before we act on it.
+function isKnownCrop(id) {
+  if (!id) return false
+  const { crops, guides } = load()
+  return !!crops[id] || (guides || []).some(g => g.id === id)
+}
+
 // Match a crop by any known name/synonym appearing in the text.
 function detectCrop(text) {
   const { crops, guides } = load()
@@ -146,4 +177,4 @@ function research(message, lang) {
   return { cropId, text: parts.join('\n\n') }
 }
 
-module.exports = { research, detectCrop, detectDiseases, load }
+module.exports = { research, detectCrop, detectDiseases, cropVocabulary, isKnownCrop, load }

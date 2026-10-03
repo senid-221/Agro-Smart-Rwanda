@@ -306,18 +306,24 @@ router.post('/analyze', requireAuth, async (req, res) => {
   if (blocked) return res.status(503).json(blocked)
 
   try {
-    const { text, isPlant } = await vision.analyze({ dataUrl, lang, cropHint })
+    const crops = knowledge.cropVocabulary()
+    const { text, isPlant, cropId: rawCrop, cropConfidence } = await vision.analyze({ dataUrl, lang, cropHint, crops })
     // Not a plant: never fabricate a crop diagnosis. Tell the farmer plainly and
     // ask for a photo of the actual plant. No observation is stored on the case.
     if (!isPlant) {
       return res.json({
         findings: '',
         isPlant: false,
+        cropId: null,
         message: lang === 'en'
           ? 'This photo does not show a plant or crop. Please scan the actual plant — get a clear, close photo of the affected leaf, stem or fruit so the AI can help.'
           : 'Iyi foto ntabwo irimo igihingwa cyangwa ikimera. Nyamuneka suzuma igihingwa nyirizina — fata ifoto isobanutse yegereye y\'ibabi, ishami cyangwa umusaruro byagizweho ingaruka kugira ngo AI igufashe.'
       })
     }
+    // Trust the crop the model identified ONLY if it is one the app has data for;
+    // otherwise stay honest and fall back to the farmer's hint (also validated).
+    const cropId = knowledge.isKnownCrop(rawCrop) ? rawCrop
+      : (knowledge.isKnownCrop(cropHint) ? String(cropHint).toLowerCase() : null)
     if (caseId) {
       const c = await getCase(req.user.id, caseId)
       if (c) {
@@ -328,7 +334,7 @@ router.post('/analyze', requireAuth, async (req, res) => {
         )
       }
     }
-    res.json({ findings: text, isPlant: true })
+    res.json({ findings: text, isPlant: true, cropId, cropConfidence: cropConfidence || '' })
   } catch (err) {
     console.error('[ai/analyze] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
