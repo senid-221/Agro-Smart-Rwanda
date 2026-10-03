@@ -320,10 +320,11 @@ router.post('/analyze', requireAuth, async (req, res) => {
           : 'Iyi foto ntabwo irimo igihingwa cyangwa ikimera. Nyamuneka suzuma igihingwa nyirizina — fata ifoto isobanutse yegereye y\'ibabi, ishami cyangwa umusaruro byagizweho ingaruka kugira ngo AI igufashe.'
       })
     }
-    // Trust the crop the model identified ONLY if it is one the app has data for;
-    // otherwise stay honest and fall back to the farmer's hint (also validated).
-    const cropId = knowledge.isKnownCrop(rawCrop) ? rawCrop
-      : (knowledge.isKnownCrop(cropHint) ? String(cropHint).toLowerCase() : null)
+    // Trust ONLY the crop the model identified from the image, and only if it is
+    // one the app has data for. The farmer's hint never overrides the image (that
+    // is exactly the wrong-crop bug we are fixing); if the id is unknown or
+    // unparseable we stay honest and return null rather than guessing.
+    const cropId = knowledge.isKnownCrop(rawCrop) ? rawCrop : null
     if (caseId) {
       const c = await getCase(req.user.id, caseId)
       if (c) {

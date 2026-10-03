@@ -21,18 +21,23 @@ function buildInstructions(cropLines) {
     '2. IDENTIFY the crop from what you see (leaf shape, venation, stem, flower/fruit, growth habit). Use the catalog below.',
     '3. Only THEN describe the health findings for that crop.',
     '',
-    'OUTPUT FORMAT — the first two lines are machine-read and must be exact:',
-    'LINE 1: either "SUBJECT: PLANT" or "SUBJECT: NOT_PLANT".',
-    '  - Use PLANT if the photo shows ANY plant or crop or a part of one (leaf, stem, flower, fruit, seedling, tree, weed, grass), even if it is not one of the catalog crops and even if it looks healthy. Only use NOT_PLANT when there is genuinely NO plant material (e.g. only a person, animal, building, vehicle, tool, document, a cooked food dish, or a blank/unusable frame). When in doubt about a green/leafy subject, choose PLANT.',
-    'LINE 2 (only if PLANT): "CROP: <id> (confidence: high|medium|low)" where <id> is EXACTLY one id from the catalog below, or "unknown" if the plant is clearly not any catalog crop. Do not invent ids.',
-    'Then, from LINE 3 onward, write the findings.',
+    'OUTPUT FORMAT — your reply MUST begin with these two lines exactly, each on its own line, with NO labels, NO numbering, and NO extra words before them. Do not write the words "LINE 1" or "LINE 2".',
+    '  First line:  SUBJECT: PLANT   (or)   SUBJECT: NOT_PLANT',
+    '  Second line: CROP: <id> (confidence: high|medium|low)',
+    'Example of a correct opening:',
+    'SUBJECT: PLANT',
+    'CROP: maize (confidence: high)',
+    '(then your findings from the next line onward)',
+    '',
+    'SUBJECT rule: use PLANT if the photo shows ANY plant or crop or a part of one (leaf, stem, flower, fruit, seedling, tree, weed, grass), even if it is not one of the catalog crops and even if it looks healthy. Only use NOT_PLANT when there is genuinely NO plant material (e.g. only a person, animal, building, vehicle, tool, document, a cooked food dish, or a blank/unusable frame). When in doubt about a green/leafy subject, choose PLANT. If NOT_PLANT, say briefly what the photo shows and stop.',
+    'CROP rule: <id> MUST be EXACTLY one id from the catalog below, or "unknown" if the plant is clearly not any catalog crop. Never invent ids. If SUBJECT is NOT_PLANT, omit the CROP line.',
     '',
     'CROP CATALOG (choose the closest id by what you SEE):',
     cropLines || '(no catalog available — use CROP: unknown)',
     '',
     'IMPORTANT about the farmer\'s suggested crop: it is only a HINT and is frequently WRONG or missing. Trust the IMAGE over the hint. If the hint disagrees with what you see, output the id you actually see and note the mismatch in one short line. Never force your answer to match a wrong hint.',
     '',
-    'FINDINGS (only what is visible — do NOT prescribe treatment, products or doses):',
+    'FINDINGS (from the third line onward; only what is visible — do NOT prescribe treatment, products or doses):',
     '- State the crop id you identified and the plant part shown.',
     '- Describe lesion shape, size and colour; pattern and distribution on the leaf/plant; any insects, eggs, webbing or frass; fungal signs (mould, powder, rust pustules, sooty growth); wilting, necrosis, chlorosis, stunting or deformation; nutrient-deficiency patterns.',
     '- Give a ranked visual impression (most to least likely) using "consistent with" language — never a definitive diagnosis from an image alone.',
@@ -53,26 +58,26 @@ function renderCropLines(crops) {
 }
 
 // Splits the model reply into { isPlant, cropId, cropConfidence, text }.
-// Line 1 carries the SUBJECT verdict, line 2 the CROP id; both are stripped so
-// the findings block stays clean for the agronomist prompt.
+// The SUBJECT and CROP header lines are stripped so the findings block stays
+// clean. Robust to the model prefixing noise (e.g. "LINE 2: CROP: maize"): the
+// header is matched case-sensitively as "CROP:" within the first few lines, so
+// prose like "- Identified crop: maize" is NOT mistaken for the header.
 function parseSubject(raw) {
   const lines = String(raw || '').split(/\r?\n/)
-  const first = (lines[0] || '').trim().toUpperCase()
-  const isPlant = !/SUBJECT:\s*NOT_?PLANT/.test(first) && !/NOT_PLANT/.test(first)
-
+  let isPlant = true
   let cropId = null
   let cropConfidence = ''
   const kept = []
   for (let i = 0; i < lines.length; i++) {
     const ln = lines[i]
-    const up = ln.trim().toUpperCase()
-    if (i === 0 && /SUBJECT:/.test(up)) continue
-    const cm = ln.match(/^\s*CROP:\s*([a-z0-9_]+)\s*(?:\(\s*confidence:\s*([a-z]+)\s*\))?/i)
-    if (cm && i <= 2) {
-      const id = String(cm[1] || '').toLowerCase()
-      cropId = id && id !== 'unknown' ? id : null
-      cropConfidence = cm[2] ? String(cm[2]).toLowerCase() : ''
-      continue
+    if (i < 3 && /SUBJECT:/i.test(ln)) { isPlant = !/NOT[_ ]?PLANT/i.test(ln); continue }
+    if (i < 4) {
+      const cm = ln.match(/CROP:\s*([A-Za-z0-9_]+)\s*(?:\(\s*confidence:\s*([A-Za-z]+)\s*\))?/)
+      if (cm) {
+        const id = String(cm[1] || '').toLowerCase()
+        if (id && id !== 'unknown') { cropId = id; cropConfidence = cm[2] ? String(cm[2]).toLowerCase() : '' }
+        continue
+      }
     }
     kept.push(ln)
   }
