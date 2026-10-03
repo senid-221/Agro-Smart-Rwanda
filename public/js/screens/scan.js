@@ -304,9 +304,14 @@ AS.renderScan = function (container, app) {
       if (!r) return null
       if (r.isPlant === false) return { findings: '', isPlant: false, message: String(r.message || '') }
       return r.findings
-        ? { findings: String(r.findings), isPlant: true, cropId: r.cropId || null }
+        ? { findings: String(r.findings), isPlant: true, cropId: r.cropId || null, part: r.part || null }
         : null
     } catch (e) { return null }
+  }
+
+  // Human label for a vision-identified plant part (seed/leaf/flower/...).
+  const partLabel = function (part) {
+    return part ? tr('scan_part_' + part) : ''
   }
 
   // The scan result IS the real Crop AI Doctor (server-side vision model). We do
@@ -335,7 +340,7 @@ AS.renderScan = function (container, app) {
     try {
       const aiRes = await callAnalyze(imgEl)
       if (aiRes && aiRes.isPlant === false) { showNotPlantSheet(aiRes.message); shown = true; return }
-      if (aiRes && aiRes.findings) { showAiSheet(aiRes.findings, aiRes.cropId); shown = true; return }
+      if (aiRes && aiRes.findings) { showConfirmSheet(aiRes); shown = true; return }
       showAiUnavailableSheet()
       shown = true
     } catch (e) {
@@ -382,9 +387,49 @@ AS.renderScan = function (container, app) {
     }
   }
 
+  // ---------- confirmation step ----------
+  // The AI names the crop AND the plant part it sees (leaf, seed, flower, root...)
+  // and asks the farmer to confirm before it gives the diagnosis. "Yes" reveals
+  // the findings; "No" lets the farmer pick the correct crop chip and scan again.
+  const showConfirmSheet = function (aiRes) {
+    // Nothing identifiable to confirm — go straight to the findings.
+    if (!aiRes.cropId && !aiRes.part) { showAiSheet(aiRes.findings, aiRes.cropId); return }
+    const cropName = aiRes.cropId && CROPS[aiRes.cropId]
+      ? (CROPS[aiRes.cropId][lang] || aiRes.cropId) : tr('scan_crop_unknown')
+    const part = partLabel(aiRes.part)
+    const ident = part ? (cropName + ' · ' + part) : cropName
+
+    sheetHost.innerHTML = `
+      <div class="sheet" id="sheet">
+        <div class="sheet-handle"></div>
+        <div class="notplant">
+          <div class="np-ico">${AS.icon('leaf', 40)}</div>
+          <div class="ci-kicker">${AS.esc(tr('scan_confirm_title'))}</div>
+          <div class="np-title">${AS.esc(ident)}</div>
+          <div class="np-body">${AS.esc(tr('scan_confirm_q'))}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="noBtn">${AS.esc(tr('scan_confirm_no'))}</button>
+          <button class="btn-solid" id="yesBtn">${AS.esc(tr('scan_confirm_yes'))}</button>
+        </div>
+      </div>`
+
+    const sheet = sheetHost.querySelector('#sheet')
+    const vf = $('#vf')
+    if (vf) vf.style.opacity = '0.25'
+    // "Yes" swaps in the diagnosis sheet (keeps the dimmed viewfinder behind it).
+    sheet.querySelector('#yesBtn').onclick = () => { showAiSheet(aiRes.findings, aiRes.cropId, aiRes.part) }
+    sheet.querySelector('#noBtn').onclick = () => {
+      sheetHost.innerHTML = ''
+      if (vf) vf.style.opacity = ''
+      setPill(tr('scan_confirm_pick'))
+      if (hasLive()) startHud()
+    }
+  }
+
   // ---------- result sheet (real Crop AI Doctor findings) ----------
   let sheetCrop = null
-  const showAiSheet = function (findings, identifiedCrop) {
+  const showAiSheet = function (findings, identifiedCrop, identifiedPart) {
     // The crop the AI actually saw wins. Fall back to a manually chosen hint.
     // 'auto' with no identification = unknown crop (still show findings honestly).
     const effCrop = CROPS[identifiedCrop] ? identifiedCrop
@@ -428,6 +473,7 @@ AS.renderScan = function (container, app) {
         </div>
         <div class="kv-grid">
           <div class="kv"><div class="k">${AS.esc(tr('scan_kv_crop'))}</div><div class="v">${AS.esc(cropName)}</div></div>
+          ${identifiedPart ? `<div class="kv"><div class="k">${AS.esc(tr('scan_part_label'))}</div><div class="v">${AS.esc(partLabel(identifiedPart))}</div></div>` : ''}
           <div class="kv"><div class="k">${AS.esc(tr('scan_kv_where'))}</div><div class="v">${AS.esc(AS.district(prefs.district)[lang])}</div></div>
         </div>
         ${mismatch ? `<div class="scan-mismatch">${AS.icon('info', 15)} ${AS.esc(tr('scan_crop_mismatch').replace('%CROP%', cropName))}</div>` : ''}

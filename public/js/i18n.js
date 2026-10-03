@@ -86,6 +86,22 @@ AS.T = {
   scan_auto_crop: { en: 'Auto-detect', rw: 'AI yimenyere' },
   scan_crop_unknown: { en: 'Crop not in catalog', rw: 'Igihingwa kitari ku rutonde' },
   scan_crop_mismatch: { en: 'The AI identified this as %CROP% from the photo, which differs from the crop you picked.', rw: 'AI yabonye ko iyi foto ari %CROP% bitandukanye n\'igihingwa wahisemo.' },
+  // Crop-doctor confirmation step: AI names crop + plant part, farmer confirms.
+  scan_confirm_title: { en: 'AI identified this', rw: 'AI yabonye iki' },
+  scan_confirm_q: { en: 'Is this what you wanted to scan?', rw: 'Ni iki washakaga gusuzumisha?' },
+  scan_confirm_yes: { en: 'Yes, continue', rw: 'Yego, komeza' },
+  scan_confirm_no: { en: 'No, it is wrong', rw: 'Oya, si cyo' },
+  scan_confirm_pick: { en: 'Choose the correct crop above, then scan again.', rw: 'Hitamo igihingwa nyacyo hejuru, hanyuma wongere usuzume.' },
+  scan_part_label: { en: 'Part', rw: 'Igice' },
+  scan_part_seed: { en: 'Seed', rw: 'Imbuto' },
+  scan_part_seedling: { en: 'Seedling', rw: 'Ingemwe' },
+  scan_part_root: { en: 'Root', rw: 'Imizi' },
+  scan_part_stem: { en: 'Stem / branch', rw: 'Ishami' },
+  scan_part_leaf: { en: 'Leaf', rw: 'Ikibabi' },
+  scan_part_flower: { en: 'Flower', rw: 'Ururabo' },
+  scan_part_fruit: { en: 'Fruit', rw: 'Urumbuto' },
+  scan_part_whole_plant: { en: 'Whole plant', rw: 'Ikimera cyose' },
+  scan_part_other: { en: 'Other part', rw: 'Ikindi gice' },
 
   // live AI scanner HUD
   scan_live: { en: 'Live AI scanning', rw: 'Gusuzuma kwa AI ako kanya' },

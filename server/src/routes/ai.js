@@ -307,7 +307,7 @@ router.post('/analyze', requireAuth, async (req, res) => {
 
   try {
     const crops = knowledge.cropVocabulary()
-    const { text, isPlant, cropId: rawCrop, cropConfidence } = await vision.analyze({ dataUrl, lang, cropHint, crops })
+    const { text, isPlant, cropId: rawCrop, cropConfidence, part } = await vision.analyze({ dataUrl, lang, cropHint, crops })
     // Not a plant: never fabricate a crop diagnosis. Tell the farmer plainly and
     // ask for a photo of the actual plant. No observation is stored on the case.
     if (!isPlant) {
@@ -315,6 +315,7 @@ router.post('/analyze', requireAuth, async (req, res) => {
         findings: '',
         isPlant: false,
         cropId: null,
+        part: null,
         message: lang === 'en'
           ? 'This photo does not show a plant or crop. Please scan the actual plant — get a clear, close photo of the affected leaf, stem or fruit so the AI can help.'
           : 'Iyi foto ntabwo irimo igihingwa cyangwa ikimera. Nyamuneka suzuma igihingwa nyirizina — fata ifoto isobanutse yegereye y\'ibabi, ishami cyangwa umusaruro byagizweho ingaruka kugira ngo AI igufashe.'
@@ -335,7 +336,7 @@ router.post('/analyze', requireAuth, async (req, res) => {
         )
       }
     }
-    res.json({ findings: text, isPlant: true, cropId, cropConfidence: cropConfidence || '' })
+    res.json({ findings: text, isPlant: true, cropId, cropConfidence: cropConfidence || '', part: part || null })
   } catch (err) {
     console.error('[ai/analyze] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({
