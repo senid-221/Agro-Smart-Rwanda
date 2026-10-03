@@ -1173,3 +1173,37 @@ body {
 .ex-steps b { color: var(--text); font-weight: 800; }
 .ex-pay-phone { font-size: 12px; color: var(--text-soft); background: #faf9f5; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
 .ex-pay-phone b { color: var(--text); }
+
+/* ---- Agronomist War Room ---- */
+.agro-new { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.agro-panel { margin-top: 10px; }
+.agro-sub { font-size: 12px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.agro-emg { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); padding: 4px 0; }
+.mtg-row .live-badge { margin-left: 6px; }
+.cp-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.cp-row { text-align: left; width: 100%; }
+.cp-row.busy { opacity: .5; pointer-events: none; }
+
+/* Meeting room chrome */
+.mtg-case { margin: 8px 10px 0; padding: 10px 12px; }
+.mtg-case-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.mtg-case-line { font-size: 12px; color: var(--text-soft); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.mtg-presence { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
+.mtg-who { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-soft); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+.mtg-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3, #b9c0b6); }
+.mtg-who.on .mtg-dot { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.18); }
+.mtg-who.on { color: var(--text); }
+
+/* Thread: AI + system rows */
+.mtg-system { text-align: center; font-size: 11px; color: var(--text-soft); margin: 8px auto; max-width: 80%; }
+.mtg-system.mtg-error { color: var(--red); }
+.mtg-ai-row .wa-bubble { background: linear-gradient(180deg, #eef7ee, #e4f1e4); border: 1px solid var(--green-100); }
+.mtg-author { font-size: 11px; font-weight: 800; color: var(--green-700); margin-bottom: 3px; }
+.mtg-ai-author { color: #0b7a3b; }
+.mtg-sources { font-size: 10.5px; color: var(--text-soft); margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 5px; }
+.wa-msg.pending { opacity: .55; }
+
+/* Composer: Ask-AI button beside the message input */
+.mtg-composer { gap: 6px; }
+.mtg-ai { flex: 0 0 auto; }
+.mtg-ai.busy { opacity: .5; pointer-events: none; }

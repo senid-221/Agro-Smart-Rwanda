@@ -185,6 +185,88 @@ function buildSystemPrompt(lang, { glossary, qa, catalog, research, scan, caseCt
   return sections.filter(Boolean).join('\n\n')
 }
 
+// Farmer-question trends (deterministic aggregates over real ai_messages /
+// crop_cases). Never invented — these are counts of what farmers actually asked.
+function trendsText(trends) {
+  const t = trends || {}
+  const lines = []
+  if (t.totalQuestions != null) lines.push(`Total farmer questions to the AI (all time): ${t.totalQuestions}`)
+  if (t.questions30d != null) lines.push(`Questions in the last 30 days: ${t.questions30d}`)
+  if (Array.isArray(t.topCrops) && t.topCrops.length) {
+    lines.push('Crops farmers ask about most (open cases): ' +
+      t.topCrops.map(c => `${c.label || c.crop} (${c.count})`).join(', '))
+  }
+  if (Array.isArray(t.topSymptoms) && t.topSymptoms.length) {
+    lines.push('Most frequent symptom words in farmer questions: ' +
+      t.topSymptoms.map(s => `${s.word} (${s.count})`).join(', '))
+  }
+  if (Array.isArray(t.emergencies) && t.emergencies.length) {
+    lines.push('Recent emergency-flagged problems: ' +
+      t.emergencies.map(e => `${e.crop || 'crop'} — ${e.reason}`).join('; '))
+  }
+  return lines.join('\n')
+}
+
+// The live meeting transcript so far (agronomists + prior AI turns), oldest first.
+function transcriptText(transcript) {
+  return (transcript || []).map(m => {
+    const who = m.kind === 'ai' ? 'War Room AI' : (m.kind === 'system' ? 'System' : (m.author || 'Agronomist'))
+    return `- ${who}: ${m.body}`
+  }).join('\n')
+}
+
+// Build the War Room system prompt. The audience here is PROFESSIONAL agronomists
+// (peers), not farmers — so the register is technical, concise and decision-first.
+// The AI contributes ON DEMAND when the team taps "Ask AI"; it must stay grounded
+// in the case, the KB research, verified products and real farmer-question trends,
+// and must NEVER invent a product, dose, registration or source.
+function buildWarRoomPrompt(lang, { caseCtx, observations, research, cropProducts, catalog, trends, transcript, question, sources } = {}) {
+  const cText = caseText(caseCtx)
+  const fuText = followUpText(observations)
+  const prods = cropProductsText(cropProducts, lang)
+  const prices = catalogText(catalog)
+  const trText = trendsText(trends)
+  const txText = transcriptText(transcript)
+  const srcText = sourcesText(sources)
+
+  const outputLang = lang === 'en'
+    ? 'Write in clear, concise professional English.'
+    : 'Andika mu Kinyarwanda cyumvikana, cy\'umwuga (professional), ukoresha amagambo ya gihanga y\'ubuhinzi. Ntuvange Icyongereza keretse izina rya siyansi cyangwa ry\'umuti (mu dukubo).'
+
+  const sections = [
+    'ROLE\nYou are the AgroSmart War Room AI — a senior crop-protection and plant-pathology decision-support specialist sitting in a LIVE meeting with professional Rwandan agronomists. They are your expert PEERS, not farmers. Give them a sharp, evidence-first technical brief they can act on and delegate. Be concise; skip basic farmer-level explanation.',
+    `OUTPUT LANGUAGE\n${outputLang}`,
+    'GROUND RULES (non-negotiable)\n' +
+      '1. Ground every claim in the CASE, the CASE HISTORY, the GROUNDED RESEARCH and the VERIFIED CROP-PROTECTION PRODUCTS below. Prefer that evidence over generic knowledge and say when it is silent.\n' +
+      '2. NEVER invent a pesticide/fungicide name, active ingredient, dose, PHI/REI, resistance group, registration number, brand or source. Only name a product that appears in the VERIFIED CROP-PROTECTION PRODUCTS or STORE CATALOG blocks, quoting its dose/PHI exactly. If nothing verified fits, describe the CLASS of treatment and tell the team to confirm the exact registered product and dose with RAB / the local agro-dealer.\n' +
+      '3. Give a differential (most likely + 1-2 alternatives) with what fits, what does not, and what evidence would confirm it. State confidence honestly (High / Moderate / Low).\n' +
+      '4. Lead with IPM (resistant varieties, rotation, sanitation, seed selection, vector control, cultural/biological) and reserve chemicals for when justified. Always include chemical-safety and REI/PHI when any agrochemical is mentioned.\n' +
+      '5. Escalate notifiable / high-severity problems (Maize Lethal Necrosis, banana Xanthomonas wilt/Kirabiranya, cassava brown streak, whole-field spread, treatment failure) to RAB (toll-free 4675, +250 788 385 312, info@rab.gov.rw).\n' +
+      '6. Cite your evidence (RAB / knowledge base / [n] citations). Never claim research was done when it was not.\n' +
+      '7. PLAIN TEXT only — no markdown (no **, *, #, backticks). Use short labelled lines and numbered steps.',
+    cText ? 'CROP HEALTH CASE UNDER DISCUSSION\n' + cText : '',
+    fuText ? 'CASE HISTORY / FOLLOW-UPS\n' + fuText : '',
+    trText
+      ? 'WHAT FARMERS ARE COMMONLY ASKING THE AI (real, deterministic aggregates — use these to anticipate the questions this case will trigger and to pre-empt farmer-facing messaging)\n' + trText
+      : '',
+    research ? 'GROUNDED RESEARCH (Rwanda-specific; cite RAB where used)\n' + research : '',
+    prods ? 'VERIFIED CROP-PROTECTION PRODUCTS (only these may be named with a dose/PHI)\n' + prods : '',
+    prices ? 'STORE CATALOG (exact RWF prices/units; never invent a price)\n' + prices : '',
+    txText ? 'MEETING TRANSCRIPT SO FAR (build on it; do not repeat what the team already settled)\n' + txText : '',
+    srcText ? 'SOURCES (cite these)\n' + srcText : '',
+    question ? 'THE TEAM\'S CURRENT QUESTION / PROMPT\n' + question : 'The team tapped "Ask AI" with no specific question — give a focused situation brief and recommended next moves.',
+    'RESPONSE STRUCTURE (short labelled sections; skip any that do not apply)\n' +
+      'Assessment — leading diagnosis + differential, with confidence.\n' +
+      'Evidence — what in the case/history/research supports it and what is missing.\n' +
+      'Farmer angle — the common farmer questions this will trigger (from the trends) and the plain message to give them.\n' +
+      'Actions — IPM-first plan; verified treatments with active ingredient, dose, timing, repeat interval, PHI/REI and safety.\n' +
+      'Action items — 2-5 concrete, assignable next steps for the team (who/what/when).\n' +
+      'Escalation — whether to notify RAB and why.\n' +
+      'Sources — the RAB / KB / [n] citations relied on.'
+  ]
+  return sections.filter(Boolean).join('\n\n')
+}
+
 // Send the conversation to Chat Completions. `messages` is the full ordered turn
 // list [{ role, content }] (history + the new user message); the system prompt is
 // prepended here so callers only manage the conversation.
@@ -249,4 +331,4 @@ async function chat({ messages, system, temperature = 0.35, maxTokens = 700 }) {
   return String(out).trim()
 }
 
-module.exports = { chat, buildSystemPrompt, AGRONOMIST_RULES, isConfigured: () => !!config.openai.key }
+module.exports = { chat, buildSystemPrompt, buildWarRoomPrompt, AGRONOMIST_RULES, isConfigured: () => !!config.openai.key }

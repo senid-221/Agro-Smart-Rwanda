@@ -31,6 +31,7 @@ const TIPS = {
 AS.renderHome = function (container, app) {
   const tr = app.t()
   const lang = app.lang || 'rw'
+  const isStaff = app.user && (app.user.role === 'agronomist' || app.user.role === 'admin')
   const prefs = app.prefs()
   const district = AS.district(prefs.district)
   const soil = AS.soilFor(prefs.crop)
@@ -181,6 +182,11 @@ AS.renderHome = function (container, app) {
         <span class="label">${AS.esc(tr('home_feature_ai'))}</span>
         <span class="desc">${AS.esc(tr('home_feature_ai_d'))}</span>
       </button>
+      ${isStaff ? `<button class="feature-card" data-go="agronomist">
+        <span class="fico-wrap">${AS.icon('shield', 20)}</span>
+        <span class="label">${AS.esc(tr('agro_entry_title'))}</span>
+        <span class="desc">${AS.esc(tr('agro_entry_desc'))}</span>
+      </button>` : ''}
     </div>
 
     <div class="sec-head">

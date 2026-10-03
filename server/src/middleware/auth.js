@@ -36,6 +36,15 @@ function requireAdmin(req, res, next) {
   next()
 }
 
+// Agronomist War Room: staff agronomists (and admins) may convene/join meetings.
+function requireAgronomist(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'unauthorized' })
+  if (req.user.role !== 'agronomist' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'forbidden' })
+  }
+  next()
+}
+
 // The client shows users by email (falling back to national ID for legacy
 // accounts); the JWT carries the row id. Google accounts include their avatar.
 function publicUser(row) {
@@ -50,4 +59,4 @@ function publicUser(row) {
   }
 }
 
-module.exports = { sign, attach, requireAuth, requireAdmin, publicUser }
+module.exports = { sign, attach, requireAuth, requireAdmin, requireAgronomist, publicUser }

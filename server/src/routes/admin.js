@@ -203,4 +203,31 @@ router.post('/crop-product/delete', async (req, res) => {
   res.json({ ok: true })
 })
 
+// ---- Agronomist staff management ----
+// Admin promotes/revokes the 'agronomist' role. Agronomists get a dashboard and
+// the shared War Room. Admins cannot be demoted here (prevents lockout).
+router.get('/users', async (_req, res) => {
+  const rows = await query(
+    `SELECT id, name, email, phone, national_id, role, created_at
+     FROM users ORDER BY (role = 'agronomist') DESC, created_at DESC LIMIT 200`
+  )
+  res.json({
+    users: rows.map(u => ({
+      id: u.id, name: u.name || '', email: u.email || '',
+      phone: u.phone || '', nationalId: u.national_id || '', role: u.role
+    }))
+  })
+})
+
+router.post('/role', async (req, res) => {
+  const userId = Number(req.body.userId)
+  const role = req.body.role === 'agronomist' ? 'agronomist' : 'user'
+  if (!userId) return res.status(400).json({ error: 'no_id' })
+  const rows = await query('SELECT id, role FROM users WHERE id=$1', [userId])
+  if (!rows[0]) return res.status(404).json({ error: 'not_found' })
+  if (rows[0].role === 'admin') return res.status(400).json({ error: 'cannot_change_admin' })
+  await query('UPDATE users SET role=$2 WHERE id=$1', [userId, role])
+  res.json({ ok: true, id: userId, role })
+})
+
 module.exports = router

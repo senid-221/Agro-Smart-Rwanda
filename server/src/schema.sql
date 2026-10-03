@@ -32,6 +32,12 @@ ALTER TABLE users ALTER COLUMN phone         DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email  ON users (email);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google ON users (google_id);
 
+-- Agronomist War Room: staff agronomists (promoted by admin) convene in live
+-- meetings over a real Crop Health Case. Widen the role CHECK to allow the new
+-- 'agronomist' role. Idempotent: drop the auto-named constraint, re-add it.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user','admin','agronomist'));
+
 CREATE TABLE IF NOT EXISTS products (
   id      VARCHAR(64) PRIMARY KEY,
   cat     VARCHAR(32)  NOT NULL DEFAULT 'seeds',
@@ -275,7 +281,48 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Indexes for the hot query paths (per-user orders/scans, catalog by category).
+-- Agronomist War Room: a live meeting convened by staff agronomists to study one
+-- real Crop Health Case together, with the AI contributing on demand. A meeting
+-- always points at an existing crop_cases row (never a fabricated problem).
+CREATE TABLE IF NOT EXISTS meetings (
+  id          SERIAL PRIMARY KEY,
+  case_id     INT          NOT NULL REFERENCES crop_cases(id) ON DELETE CASCADE,
+  created_by  INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title       VARCHAR(160) NOT NULL DEFAULT '',
+  crop        VARCHAR(32)  NOT NULL DEFAULT '',
+  status      VARCHAR(12)  NOT NULL DEFAULT 'open'
+              CHECK (status IN ('open','closed')),
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Who is in the meeting + their live presence. Agronomists auto-join on open;
+-- last_seen powers the "online now" dots (a heartbeat, not a websocket).
+CREATE TABLE IF NOT EXISTS meeting_participants (
+  id         SERIAL PRIMARY KEY,
+  meeting_id INT          NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+  user_id    INT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       VARCHAR(12)  NOT NULL DEFAULT 'agronomist'
+             CHECK (role IN ('agronomist','admin','ai')),
+  last_seen  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  joined_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  UNIQUE (meeting_id, user_id)
+);
+
+-- The live thread. `kind`: message (agronomist), ai (War Room AI contribution),
+-- system (join/close notices). `author_id` is NULL for the AI/system rows.
+CREATE TABLE IF NOT EXISTS meeting_messages (
+  id         SERIAL PRIMARY KEY,
+  meeting_id INT          NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+  author_id  INT          REFERENCES users(id) ON DELETE SET NULL,
+  author     VARCHAR(120) NOT NULL DEFAULT '',
+  kind       VARCHAR(12)  NOT NULL DEFAULT 'message'
+             CHECK (kind IN ('message','ai','system')),
+  body       TEXT         NOT NULL DEFAULT '',
+  sources    JSONB        NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_user_created ON scans (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON community_posts (created_at DESC);
@@ -289,6 +336,13 @@ CREATE INDEX IF NOT EXISTS idx_obs_case ON case_observations (case_id, created_a
 CREATE INDEX IF NOT EXISTS idx_tasks_case ON case_tasks (case_id, task_date ASC, id ASC);
 CREATE INDEX IF NOT EXISTS idx_research_user ON research_records (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_products_crop ON ai_products (target_crop);
+
+-- Indexes for the hot query paths (per-user orders/scans, catalog by category).
+CREATE INDEX IF NOT EXISTS idx_meetings_status ON meetings (status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meetings_case ON meetings (case_id);
+CREATE INDEX IF NOT EXISTS idx_mtg_parts_meeting ON meeting_participants (meeting_id);
+CREATE INDEX IF NOT EXISTS idx_mtg_parts_user ON meeting_participants (user_id, last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_mtg_msgs_meeting ON meeting_messages (meeting_id, id ASC);
 
 -- Function + trigger: keep carts.updated_at current (Postgres has no ON UPDATE).
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
@@ -306,5 +360,10 @@ CREATE TRIGGER trg_carts_updated_at
 DROP TRIGGER IF EXISTS trg_cases_updated_at ON crop_cases;
 CREATE TRIGGER trg_cases_updated_at
   BEFORE UPDATE ON crop_cases
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_meetings_updated_at ON meetings;
+CREATE TRIGGER trg_meetings_updated_at
+  BEFORE UPDATE ON meetings
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 

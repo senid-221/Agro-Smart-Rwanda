@@ -455,6 +455,7 @@ AS.renderSettings = function (container, app) {
   const tr = app.t()
   const lang = app.lang || 'rw'
   const isAdmin = app.user && app.user.role === 'admin'
+  const isStaff = app.user && (app.user.role === 'agronomist' || app.user.role === 'admin')
   const prefs = app.prefs()
 
   const provs = ['Kigali', 'North', 'South', 'East', 'West']
@@ -486,7 +487,7 @@ AS.renderSettings = function (container, app) {
     <div class="setting-row">
       <div>
         <div class="label">${AS.icon('user', 18)} ${tr('settings_account')}</div>
-        <div class="desc">${esc([app.user.email || app.user.id, app.user.phone].filter(Boolean).join(' · '))}${isAdmin ? ' · ' + tr('admin_role') : ''}</div>
+        <div class="desc">${esc([app.user.email || app.user.id, app.user.phone].filter(Boolean).join(' · '))}${isAdmin ? ' · ' + tr('admin_role') : (app.user.role === 'agronomist' ? ' · ' + tr('role_agronomist') : '')}</div>
       </div>
     </div>
 
@@ -502,6 +503,14 @@ AS.renderSettings = function (container, app) {
       <div>
         <div class="label">${AS.icon('shield', 18)} ${tr('admin_title')}</div>
         <div class="desc">${tr('admin_desc')}</div>
+      </div>
+      <span class="arrow">${AS.icon('arrowr', 16)}</span>
+    </div>` : ''}
+
+    ${isStaff ? `<div class="setting-row" id="warRoomRow" style="cursor:pointer">
+      <div>
+        <div class="label">${AS.icon('chat', 18)} ${tr('agro_entry_title')}</div>
+        <div class="desc">${tr('agro_entry_desc')}</div>
       </div>
       <span class="arrow">${AS.icon('arrowr', 16)}</span>
     </div>` : ''}
@@ -556,6 +565,7 @@ AS.renderSettings = function (container, app) {
   if (nameInput) nameInput.onchange = () => app.setName(nameInput.value.trim())
   container.querySelector('#dashRow').onclick = () => app.go('dashboard')
   if (isAdmin) container.querySelector('#adminRow').onclick = () => app.go('admin')
+  if (isStaff) container.querySelector('#warRoomRow').onclick = () => app.go('agronomist')
   container.querySelector('#installRow').onclick = async () => {
     const ev = window.__installEvent
     if (ev) {

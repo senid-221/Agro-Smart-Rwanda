@@ -5,7 +5,7 @@ const {
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
   renderAssistant, renderCase, renderDashboard, renderAdmin, renderAlerts, renderWeather,
-  renderCommunity, renderExpert, renderMap
+  renderCommunity, renderExpert, renderMap, renderAgronomist, renderMeeting
 } = AS
 
 const state = {
@@ -43,12 +43,14 @@ const ROUTES = {
   community: { screen: 'community', render: c => renderCommunity(c, app) },
   expert: { screen: 'expert', render: c => renderExpert(c, app) },
   admin: { screen: 'admin', render: c => renderAdmin(c, app) },
+  agronomist: { screen: 'agronomist', render: c => renderAgronomist(c, app) },
+  meeting: { screen: 'meeting', render: c => renderMeeting(c, app, state.route.params.id) },
   settings: { screen: 'settings', render: c => renderSettings(c, app) }
 }
 
 // Screens that draw their own header exactly as in the design mockup
 // (assistant/case keep the chat header, admin keeps its panel header).
-const OWN_CHROME = { home: 1, analytics: 1, alerts: 1, scan: 1, assistant: 1, admin: 1 }
+const OWN_CHROME = { home: 1, analytics: 1, alerts: 1, scan: 1, assistant: 1, admin: 1, meeting: 1 }
 // Tab-bar label + icon per screen group.
 const TAB_FOR = { home: 'home', analytics: 'analytics', alerts: 'alerts', settings: 'settings' }
 // Title for the generic header, per route (falls back to the screen group title).
@@ -60,6 +62,7 @@ const ROUTE_TITLE = {
   weather: 'wx_title',
   map: 'map_title',
   community: 'cm_title', expert: 'ex_title',
+  agronomist: 'agro_title', meeting: 'mtg_title',
   settings: 'nav_settings'
 }
 

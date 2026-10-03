@@ -56,6 +56,7 @@ AS.renderAdmin = function (container, app) {
     if (panel === 'ai') return renderAI(body)
     if (panel === 'cropmed') return renderCropMed(body)
     if (panel === 'provider') return renderProvider(body)
+    if (panel === 'staff') return renderStaff(body)
   }
 
   // ---------- menu ----------
@@ -66,7 +67,8 @@ AS.renderAdmin = function (container, app) {
       ['appearance', 'img/settings.png', 'admin_appearance_d'],
       ['ai', 'img/chat.png', 'admin_ai_d'],
       ['cropmed', 'img/book.png', 'admin_cropmed_d'],
-      ['provider', 'img/chemistry.png', 'admin_provider_d']
+      ['provider', 'img/chemistry.png', 'admin_provider_d'],
+      ['staff', 'img/user.png', 'admin_staff_d']
     ]
     body.innerHTML = `<div class="grid-2">` + cards.map(([k, ico, d]) => `
       <button class="feature-card" data-panel="${k}">
@@ -526,6 +528,45 @@ AS.renderAdmin = function (container, app) {
       const res = await AS.api.post('/ai/chat', { message: lang === 'rw' ? 'Muraho' : 'Hello', lang, ctx: {} })
       note.textContent = (res && res.text ? '✓ ' : '✗ ') + (res && res.intent ? res.intent : 'error') + ': ' + (res && res.text ? res.text.slice(0, 80) : '')
     }
+  }
+
+  // ---------- staff (agronomist role management) ----------
+  function renderStaff(body) {
+    body.innerHTML = `<p class="progress-note">${tr('admin_staff_hint')}</p><div id="staffList"><div class="empty-state"><span class="emoji">⏳</span></div></div>`
+    const list = body.querySelector('#staffList')
+    AS.api.get('/admin/users').then(({ users }) => {
+      if (!container.isConnected) return
+      if (!users || !users.length) {
+        list.innerHTML = `<div class="empty-state"><span class="emoji">👤</span>${tr('admin_staff_none')}</div>`
+        return
+      }
+      list.innerHTML = users.map(u => `
+        <div class="list-row staff-row" data-id="${u.id}">
+          <div class="body">
+            <div class="name">${esc(u.name || u.email || u.phone || ('#' + u.id))}
+              ${u.role === 'admin' ? `<span class="badge gold">${tr('role_admin')}</span>` : ''}
+              ${u.role === 'agronomist' ? `<span class="badge sev-low">${tr('role_agronomist')}</span>` : ''}
+            </div>
+            <div class="meta">${esc([u.email, u.phone].filter(Boolean).join(' · ') || ('ID ' + u.id))}</div>
+          </div>
+          ${u.role === 'admin' ? '' : `<button class="btn sm ${u.role === 'agronomist' ? 'btn-outline' : 'btn-primary'}" data-act="${u.role === 'agronomist' ? 'revoke' : 'promote'}">
+            ${u.role === 'agronomist' ? tr('admin_revoke_agro') : tr('admin_make_agro')}
+          </button>`}
+        </div>`).join('')
+      list.querySelectorAll('[data-act]').forEach(btn => {
+        btn.onclick = async () => {
+          const id = Number(btn.closest('[data-id]').dataset.id)
+          const role = btn.dataset.act === 'promote' ? 'agronomist' : 'user'
+          btn.disabled = true
+          try {
+            await AS.api.post('/admin/role', { userId: id, role })
+            renderStaff(body)
+          } catch (e) {
+            btn.disabled = false
+          }
+        }
+      })
+    })
   }
 
   load().then(draw)
