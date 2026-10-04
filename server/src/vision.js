@@ -1,52 +1,91 @@
-// Vision analysis for the Crop AI Doctor.
+// Vision analysis for the AI Crop Scanner (the Crop AI Doctor's eyes).
 //
-// Sends a farmer's crop photo to a vision-capable model and returns a concise,
-// structured VISUAL FINDINGS block (crop, plant part, lesion shape/colour/
-// pattern/distribution, insects, fungal signs, wilting/necrosis, deficiency
-// patterns) plus an honest quality/confidence note. This block is fed to the main
-// agronomist prompt as the `scan` context — the vision model does NOT prescribe
-// treatment, it only reports what is visible, so the agronomist reasoning, the
-// grounded research and the case history stay in control of the diagnosis.
+// Sends one or more of a farmer's plant photos to a vision-capable model and asks
+// for a STRICT JSON object: a universal plant identification (ANY plant, not just
+// the app's catalog crops), an image-quality verdict, a health/disease assessment
+// with a ranked differential and honest confidence, pest detection, IPM-first
+// treatment guidance, prevention, care for healthy plants, chemical-safety notes
+// and limitations. The model reports what it SEES and gives general, class-level
+// treatment guidance only — it NEVER names a specific product, brand, active
+// ingredient, dose or PHI (those come only from the verified-products gate in the
+// agronomist chat), so the no-fabrication doctrine holds.
+//
+// The result is normalised into a stable shape the client can rely on, and also
+// exposes the legacy { text, isPlant, cropId, cropConfidence, part } fields so the
+// existing scan sheet and assistant chat keep working unchanged.
 const config = require('./config')
 
-// Build the system prompt. `cropLines` is the app's real crop catalog rendered
-// as "id — English / Kinyarwanda (aliases)". The model MUST pick one of these ids
-// (or 'unknown'), so a scan maps to the exact crop keys the KB/RAB/soil data use.
-function buildInstructions(cropLines) {
+// The plant parts the model may name (controlled set). Anything else is dropped.
+const PARTS = ['seed', 'seedling', 'root', 'stem', 'leaf', 'flower', 'fruit', 'whole_plant', 'other']
+// Broad plant categories so ANY species can be classified, not just catalog crops.
+const CATEGORIES = ['cereal', 'legume', 'vegetable', 'fruit', 'tree', 'flower', 'herb', 'weed', 'medicinal', 'ornamental', 'tuber', 'seedling', 'other']
+// Cause categories for a diagnosis.
+const CAUSES = ['fungal', 'bacterial', 'viral', 'nematode', 'environmental', 'nutritional', 'pest', 'physiological', 'unknown']
+const STATUS = ['healthy', 'problem', 'unknown']
+const SEVERITY = ['none', 'low', 'moderate', 'high', 'critical']
+const QUALITY_ISSUES = ['blurry', 'dark', 'low_resolution', 'too_far', 'obscured', 'no_plant']
+const CONF_WORDS = ['high', 'moderate', 'low']
+
+// Build the system prompt. `cropLines` is the app's real crop catalog rendered as
+// "id — English / Kinyarwanda (aliases)". The model may identify ANY plant it sees,
+// but when the plant IS one of these catalog crops it must also set plant.cropId to
+// that exact id so the scan maps to the keys the KB/RAB/soil data use.
+function buildInstructions(cropLines, langName) {
   return [
-    'You are an expert plant pathologist and crop identification specialist examining a photo for a Rwandan smallholder farmer. You are as capable as a top-tier vision model: look carefully at what is ACTUALLY in the image before you say anything.',
+    'You are an expert botanist, plant pathologist and crop-protection specialist examining photo(s) for a Rwandan smallholder farmer. You are as capable as a top-tier vision model. Look carefully at what is ACTUALLY in the image before you conclude anything, and never invent facts.',
     '',
-    'WORK IN THIS ORDER — do not skip steps:',
-    '1. LOOK at the whole image first. Decide if any plant/crop/leaf/stem/seedling/flower/fruit/plant part is present.',
-    '2. IDENTIFY the crop from what you see (leaf shape, venation, stem, flower/fruit, growth habit). Use the catalog below.',
-    '3. IDENTIFY which plant PART is the main subject of the photo (see PART list).',
-    '4. Only THEN describe the health findings for that crop and part.',
+    'WORK IN THIS ORDER:',
+    '1. CHECK IMAGE QUALITY first. If the photo is blurry, too dark, very low resolution, the plant is too far away, partly hidden, or there is no plant at all, say so — set imageQuality.sufficient=false, list the issues, give short retake advice, and DO NOT give a confident diagnosis.',
+    '2. IDENTIFY THE PLANT from what you see (leaf shape, venation, stem, flower/fruit, growth habit). You may identify ANY plant — crops, vegetables, fruits, trees, flowers, herbs, weeds, medicinal, ornamental, seedlings or wild/unknown plants. Give its common name (in ' + langName + '), scientific name, and a broad category.',
+    '3. MAP TO THE CATALOG: if the plant is clearly one of the catalog crops below, set plant.cropId to that EXACT id; otherwise set plant.cropId to null. Never invent a catalog id.',
+    '4. IDENTIFY THE PLANT PART that is the main subject (see part list).',
+    '5. ASSESS HEALTH: is it healthy, is a problem visible, or unknown? Then give a ranked differential diagnosis with honest confidence, visible symptoms, pests, and IPM-first treatment guidance.',
     '',
-    'OUTPUT FORMAT — your reply MUST begin with these three lines exactly, each on its own line, with NO labels, NO numbering, and NO extra words before them. Do not write the words "LINE 1", "LINE 2" or "LINE 3".',
-    '  First line:  SUBJECT: PLANT   (or)   SUBJECT: NOT_PLANT',
-    '  Second line: CROP: <id> (confidence: high|medium|low)',
-    '  Third line:  PART: <part> (confidence: high|medium|low)',
-    'Example of a correct opening:',
-    'SUBJECT: PLANT',
-    'CROP: maize (confidence: high)',
-    'PART: leaf (confidence: high)',
-    '(then your findings from the next line onward)',
+    'THE FARMER\'S SUGGESTED CROP (if any) is only a HINT and is frequently WRONG or missing. Trust the IMAGE over the hint. Never force your answer to match a wrong hint.',
     '',
-    'SUBJECT rule: use PLANT if the photo shows ANY plant or crop or a part of one (leaf, stem, flower, fruit, seedling, tree, weed, grass), even if it is not one of the catalog crops and even if it looks healthy. Only use NOT_PLANT when there is genuinely NO plant material (e.g. only a person, animal, building, vehicle, tool, document, a cooked food dish, or a blank/unusable frame). When in doubt about a green/leafy subject, choose PLANT. If NOT_PLANT, say briefly what the photo shows and stop (omit the CROP and PART lines).',
-    'CROP rule: <id> MUST be EXACTLY one id from the catalog below, or "unknown" if the plant is clearly not any catalog crop. Never invent ids.',
-    'PART rule: <part> MUST be EXACTLY one of: seed (imbuto), seedling (ingemwe/umukeke), root (imizi), stem (ishami/umuti), leaf (ikibabi), flower (ururabo), fruit (urumbuto/umusaruro), whole_plant (ikimera cyose), other. Pick the part that is the MAIN subject of the photo; if several parts are equally shown, use whole_plant.',
+    'CROP CATALOG (use these ids for plant.cropId ONLY when the plant clearly matches; otherwise null):',
+    cropLines || '(no catalog available — always use plant.cropId: null)',
     '',
-    'CROP CATALOG (choose the closest id by what you SEE):',
-    cropLines || '(no catalog available — use CROP: unknown)',
+    'HARD SAFETY RULES (non-negotiable):',
+    '- NEVER invent or guess a product name, brand, active ingredient, dose, concentration, PHI/REI interval or registration number. Treatment must be GENERAL cultural / mechanical / biological / IPM practices, or a treatment CLASS (e.g. "a registered copper-based fungicide") with an explicit instruction to confirm the exact product, dose and pre-harvest interval with the local agro-dealer or RAB.',
+    '- Order treatment by preference: cultural -> mechanical/physical -> biological -> IPM -> chemical (only when justified).',
+    '- Never claim certainty. confidence numbers must be integers BELOW 100 and reflect real uncertainty; use "consistent with / likely / possible" language. Never write "100%" or "confirmed".',
+    '- If visual evidence is insufficient, lower confidence, say what is missing, and put it in diagnosis.distinguishingInfo and warnings.',
+    '- For serious, rapidly spreading or notifiable problems, add a warning to consult RAB or a professional agronomist.',
     '',
-    'IMPORTANT about the farmer\'s suggested crop: it is only a HINT and is frequently WRONG or missing. Trust the IMAGE over the hint. If the hint disagrees with what you see, output the id you actually see and note the mismatch in one short line. Never force your answer to match a wrong hint.',
+    'OUTPUT: reply with ONE valid JSON object ONLY — no markdown fences, no commentary, no text before or after. All human-readable strings (names, symptoms, advice, summary, treatment, warnings) MUST be written in ' + langName + '. Use this exact shape:',
+    '{',
+    '  "isPlant": true,',
+    '  "imageQuality": { "sufficient": true, "issues": [], "advice": "" },',
+    '  "plant": { "name": "", "scientificName": "", "category": "other", "cropId": null, "part": "leaf", "confidence": "moderate" },',
+    '  "health": { "status": "unknown", "severity": "none" },',
+    '  "diagnosis": {',
+    '    "primary": { "name": "", "scientificName": "", "cause": "unknown", "confidence": 0 },',
+    '    "alternatives": [ { "name": "", "cause": "unknown", "confidence": 0 } ],',
+    '    "symptoms": [],',
+    '    "distinguishingInfo": ""',
+    '  },',
+    '  "pest": { "detected": false, "name": "", "scientificName": "", "damage": "", "confidence": "low" },',
+    '  "treatment": { "immediate": [], "shortTerm": [], "longTerm": [] },',
+    '  "prevention": [],',
+    '  "care": { "watering": "", "sunlight": "", "soil": "", "fertilization": "", "spacing": "", "pruning": "", "growthStage": "", "pestMonitoring": "", "harvest": "" },',
+    '  "chemicalSafety": [],',
+    '  "warnings": [],',
+    '  "summary": ""',
+    '}',
     '',
-    'FINDINGS (from the fourth line onward; only what is visible — do NOT prescribe treatment, products or doses):',
-    '- State the crop id and the plant part you identified.',
-    '- Describe lesion shape, size and colour; pattern and distribution on the leaf/plant; any insects, eggs, webbing or frass; fungal signs (mould, powder, rust pustules, sooty growth); wilting, necrosis, chlorosis, stunting or deformation; nutrient-deficiency patterns.',
-    '- Give a ranked visual impression (most to least likely) using "consistent with" language — never a definitive diagnosis from an image alone.',
-    '- If the image is blurry, too dark, too far away, or does not clearly show the affected part, SAY SO plainly and state what a better photo would need. Do not pretend to identify a disease from an unusable image.',
-    'Be concise: short labelled lines, no preamble.'
+    'FIELD RULES:',
+    '- isPlant: true if ANY plant/plant part is present (even healthy, even a weed or non-catalog plant); false only when there is genuinely no plant material (person, animal, building, tool, cooked food, blank frame). When in doubt about a green/leafy subject, use true.',
+    '- imageQuality.issues: any of blurry, dark, low_resolution, too_far, obscured, no_plant. advice: one short sentence on how to retake (only when sufficient=false).',
+    '- plant.category: one of ' + CATEGORIES.join(', ') + '. plant.part: one of ' + PARTS.join(', ') + '. plant.confidence: high|moderate|low (for the IDENTIFICATION).',
+    '- health.status: healthy|problem|unknown. health.severity: none|low|moderate|high|critical.',
+    '- diagnosis.primary.cause and alternatives[].cause: one of ' + CAUSES.join(', ') + '. confidence: integer 0-99. List 1-3 realistic alternatives ranked by likelihood; do not force a single answer. symptoms: short strings describing ONLY what you can see. distinguishingInfo: what extra evidence would separate the top possibilities.',
+    '- pest.detected: true only if you actually see a pest or clear pest damage; describe it, do not guess.',
+    '- treatment/prevention/chemicalSafety: arrays of short, GENERAL, safe action strings (IPM-first; no product names or doses). chemicalSafety: PPE, no mixing, keep away from children/livestock/water/bees, observe pre-harvest interval, seek professional advice — only when a chemical class is mentioned.',
+    '- care: fill ONLY when health.status is "healthy" (or no problem is found); keep each field short and practical; leave "" for anything you cannot infer. Do not overwhelm.',
+    '- When health.status is "healthy", leave diagnosis.primary.name "" and confidence 0, and focus on care.',
+    '- summary: 2-4 plain sentences in ' + langName + ' that a farmer can read aloud — what the plant is, what you see, the most likely cause and the first thing to do. This is the text shown to the farmer.',
+    '- If isPlant is false OR imageQuality.sufficient is false, keep the diagnosis minimal/empty, set health.status "unknown", and rely on summary + imageQuality.advice + warnings to tell the farmer what to do next.'
   ].join('\n')
 }
 
@@ -61,14 +100,129 @@ function renderCropLines(crops) {
     .join('\n')
 }
 
-// The plant parts the model may name (controlled set). Anything else is dropped.
-const PARTS = ['seed', 'seedling', 'root', 'stem', 'leaf', 'flower', 'fruit', 'whole_plant', 'other']
+// ---- tolerant helpers -------------------------------------------------------
+const str = x => String(x == null ? '' : x).trim()
+const lower = x => String(x == null ? '' : x).trim().toLowerCase()
 
-// Splits the model reply into { isPlant, cropId, cropConfidence, part, text }.
-// The SUBJECT/CROP/PART header lines are stripped so the findings block stays
-// clean. Robust to the model prefixing noise (e.g. "LINE 2: CROP: maize"): the
-// headers are matched case-sensitively within the first few lines, so prose like
-// "- Identified crop: maize" is NOT mistaken for a header.
+function arr(x) {
+  if (Array.isArray(x)) return x.map(v => (typeof v === 'string' ? str(v) : str(v && (v.name || v.text || v.detail)))).filter(Boolean)
+  const s = str(x)
+  return s ? [s] : []
+}
+const oneOf = (x, set, def) => { const v = lower(x); return set.includes(v) ? v : def }
+function intConf(x) {
+  const n = Math.round(Number(x))
+  if (!Number.isFinite(n)) return null
+  return Math.max(0, Math.min(99, n)) // never 100 — we never claim certainty
+}
+// Deterministic confidence band from a 0-99 integer (spec: High 80+, Moderate 50-79, Low <50).
+const band = n => (n == null ? '' : (n >= 80 ? 'high' : n >= 50 ? 'moderate' : 'low'))
+
+// Pull the first JSON object out of a model reply, tolerating ```json fences and
+// any stray prose the model may wrap around it.
+function extractJson(raw) {
+  let s = String(raw || '').trim()
+  if (!s) return null
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fence) s = fence[1].trim()
+  try { return JSON.parse(s) } catch (_) { /* fall through to brace-scan */ }
+  const start = s.indexOf('{')
+  const end = s.lastIndexOf('}')
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(s.slice(start, end + 1)) } catch (_) { /* give up */ }
+  }
+  return null
+}
+
+// Coerce whatever the model returned into the stable shape the client expects.
+// Every key is always present so the frontend never has to null-check deeply.
+function normalizeResult(obj, lang) {
+  const o = obj && typeof obj === 'object' ? obj : {}
+  const q = o.imageQuality && typeof o.imageQuality === 'object' ? o.imageQuality : {}
+  const p = o.plant && typeof o.plant === 'object' ? o.plant : {}
+  const h = o.health && typeof o.health === 'object' ? o.health : {}
+  const d = o.diagnosis && typeof o.diagnosis === 'object' ? o.diagnosis : {}
+  const pr = d.primary && typeof d.primary === 'object' ? d.primary : {}
+  const pe = o.pest && typeof o.pest === 'object' ? o.pest : {}
+  const t = o.treatment && typeof o.treatment === 'object' ? o.treatment : {}
+  const care = o.care && typeof o.care === 'object' ? o.care : {}
+
+  const isPlant = o.isPlant === undefined ? true : !!o.isPlant
+  const issues = arr(q.issues).map(lower).filter(x => QUALITY_ISSUES.includes(x))
+  const sufficient = q.sufficient === undefined ? true : !!q.sufficient
+
+  const part = oneOf(p.part, PARTS, '') || null
+  const cropIdRaw = lower(p.cropId)
+  const cropId = cropIdRaw && cropIdRaw !== 'null' && cropIdRaw !== 'unknown' ? cropIdRaw : null
+  const idConf = oneOf(p.confidence, CONF_WORDS, '')
+
+  const primaryConf = intConf(pr.confidence)
+  const alternatives = (Array.isArray(d.alternatives) ? d.alternatives : [])
+    .map(a => (a && typeof a === 'object' ? a : { name: a }))
+    .map(a => ({ name: str(a.name), cause: oneOf(a.cause, CAUSES, 'unknown'), confidence: intConf(a.confidence) }))
+    .filter(a => a.name)
+    .slice(0, 4)
+
+  // Overall confidence band: from the primary diagnosis when there is a problem,
+  // otherwise from the identification confidence word.
+  let confidence = oneOf(o.confidence, CONF_WORDS, '')
+  if (!confidence) confidence = primaryConf != null ? band(primaryConf) : (idConf || 'low')
+
+  const structured = {
+    isPlant,
+    imageQuality: { sufficient, issues, advice: str(q.advice) },
+    plant: {
+      name: str(p.name), scientificName: str(p.scientificName),
+      category: oneOf(p.category, CATEGORIES, 'other'),
+      cropId, part, confidence: idConf || confidence || 'low'
+    },
+    health: { status: oneOf(h.status, STATUS, 'unknown'), severity: oneOf(h.severity, SEVERITY, 'none') },
+    diagnosis: {
+      primary: {
+        name: str(pr.name), scientificName: str(pr.scientificName),
+        cause: oneOf(pr.cause, CAUSES, 'unknown'), confidence: primaryConf
+      },
+      alternatives,
+      symptoms: arr(d.symptoms).slice(0, 10),
+      distinguishingInfo: str(d.distinguishingInfo)
+    },
+    pest: {
+      detected: !!pe.detected, name: str(pe.name), scientificName: str(pe.scientificName),
+      damage: str(pe.damage), confidence: oneOf(pe.confidence, CONF_WORDS, 'low')
+    },
+    treatment: {
+      immediate: arr(t.immediate).slice(0, 6),
+      shortTerm: arr(t.shortTerm).slice(0, 6),
+      longTerm: arr(t.longTerm).slice(0, 6)
+    },
+    prevention: arr(o.prevention).slice(0, 6),
+    care: {
+      watering: str(care.watering), sunlight: str(care.sunlight), soil: str(care.soil),
+      fertilization: str(care.fertilization), spacing: str(care.spacing), pruning: str(care.pruning),
+      growthStage: str(care.growthStage), pestMonitoring: str(care.pestMonitoring), harvest: str(care.harvest)
+    },
+    chemicalSafety: arr(o.chemicalSafety).slice(0, 6),
+    warnings: arr(o.warnings).slice(0, 6),
+    confidence,
+    summary: str(o.summary)
+  }
+
+  // A readable findings block for the legacy `text`/`findings` field and for the
+  // chat's ctx.scan. Prefer the model's summary; compose a fallback if missing.
+  let text = structured.summary
+  if (!text) {
+    const bits = []
+    if (structured.plant.name) bits.push(structured.plant.name)
+    if (structured.diagnosis.primary.name) bits.push(structured.diagnosis.primary.name)
+    if (structured.diagnosis.symptoms.length) bits.push(structured.diagnosis.symptoms.join('; '))
+    text = bits.join(' — ')
+  }
+  return { structured, text }
+}
+
+// Legacy header-line parser (SUBJECT/CROP/PART). Kept exported for backward
+// compatibility with any caller/test that still imports it; the new JSON path
+// does not use it.
 function parseSubject(raw) {
   const lines = String(raw || '').split(/\r?\n/)
   let isPlant = true
@@ -99,16 +253,22 @@ function parseSubject(raw) {
   return { isPlant, cropId, cropConfidence, part, text: body || String(raw || '').trim() }
 }
 
-// dataUrl: a full "data:image/...;base64,...." string from the client.
-// crops: the controlled crop catalog (knowledge.cropVocabulary()).
-// Returns { text, isPlant, cropId, cropConfidence }, or throws when unconfigured.
-async function analyze({ dataUrl, lang, cropHint, crops }) {
+// Accepts { dataUrl } (single) or { dataUrls: [...] } (multi-image), plus
+// { lang, cropHint, crops }. Returns the normalised structured result and the
+// legacy fields, or throws when unconfigured / no valid image.
+async function analyze({ dataUrl, dataUrls, lang, cropHint, crops }) {
   if (!config.openai.key) {
     const err = new Error('OPENAI_API_KEY is not configured on the server')
     err.code = 'no_key'
     throw err
   }
-  if (!dataUrl || !/^data:image\//.test(dataUrl)) {
+  // Normalise to a list of valid image data URLs (multi-image support without
+  // breaking the single-image callers). Cap at 4 images to bound cost/latency.
+  const images = (Array.isArray(dataUrls) && dataUrls.length ? dataUrls : [dataUrl])
+    .map(u => str(u))
+    .filter(u => /^data:image\//.test(u))
+    .slice(0, 4)
+  if (!images.length) {
     const err = new Error('a valid image data URL is required')
     err.code = 'bad_image'
     throw err
@@ -116,33 +276,40 @@ async function analyze({ dataUrl, lang, cropHint, crops }) {
 
   const langName = lang === 'en' ? 'English' : 'Kinyarwanda'
   const userText =
-    `Look at this photo, identify the crop from the catalog, then report visual findings in ${langName}.` +
+    (images.length > 1
+      ? `These ${images.length} photos are of the SAME plant (whole plant, affected part, pest, etc.). Combine the evidence and analyse them together.`
+      : 'Analyse this plant photo.') +
+    ` Identify the plant, assess its health and reply with the JSON object only, in ${langName}.` +
     (cropHint ? ` Farmer's hint (may be wrong — trust the image): ${cropHint}.` : ' No crop hint was given — identify it yourself.')
 
-  const body = {
-    model: config.openai.visionModel,
-    temperature: 0.2,
-    max_tokens: 600,
-    messages: [
-      { role: 'system', content: buildInstructions(renderCropLines(crops)) },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: userText },
-          { type: 'image_url', image_url: { url: dataUrl } }
-        ]
-      }
-    ]
-  }
+  const content = [{ type: 'text', text: userText }]
+  for (const url of images) content.push({ type: 'image_url', image_url: { url } })
 
-  const res = await fetch(`${config.openai.baseUrl}/chat/completions`, {
+  const messages = [
+    { role: 'system', content: buildInstructions(renderCropLines(crops), langName) },
+    { role: 'user', content }
+  ]
+  const base = { model: config.openai.visionModel, temperature: 0.2, max_tokens: 1800, messages }
+  const post = (b) => fetch(`${config.openai.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.openai.key}`
-    },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.openai.key}` },
+    body: JSON.stringify(b)
   })
+
+  // Ask for strict JSON. If the provider/proxy rejects response_format (some do),
+  // retry once without it and fall back to the JSON-only instruction + tolerant
+  // parser, so a proxy quirk can never take down every scan.
+  let res = await post(Object.assign({ response_format: { type: 'json_object' } }, base))
+  if (res.status === 400) {
+    const t400 = await res.text().catch(() => '')
+    if (/response_format|json_object/i.test(t400)) {
+      res = await post(base)
+    } else {
+      const err = new Error(`OpenAI vision HTTP 400: ${t400.slice(0, 200)}`)
+      err.code = 'upstream'
+      throw err
+    }
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '')
     const err = new Error(`OpenAI vision HTTP ${res.status}: ${t.slice(0, 200)}`)
@@ -151,18 +318,38 @@ async function analyze({ dataUrl, lang, cropHint, crops }) {
   }
   const data = await res.json()
   const out = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
-  const text = typeof out === 'string' ? out : JSON.stringify(out || '')
-  if (!text.trim()) {
+  const raw = typeof out === 'string' ? out : JSON.stringify(out || '')
+  if (!raw.trim()) {
     const err = new Error('empty reply from vision model')
     err.code = 'empty'
     throw err
   }
-  const parsed = parseSubject(text)
+
+  const obj = extractJson(raw)
+  if (!obj) {
+    // The model ignored the JSON instruction. Stay honest: treat the raw text as
+    // the summary, assume a plant, and let the client show the findings.
+    const fallback = normalizeResult({ isPlant: true, summary: raw.trim() }, lang)
+    return {
+      text: fallback.text, isPlant: true, cropId: null, cropConfidence: '', part: null,
+      structured: fallback.structured, raw: raw.trim()
+    }
+  }
+
+  const { structured, text } = normalizeResult(obj, lang)
   return {
-    text: parsed.text, isPlant: parsed.isPlant,
-    cropId: parsed.cropId, cropConfidence: parsed.cropConfidence,
-    part: parsed.part, raw: text.trim()
+    text,
+    isPlant: structured.isPlant,
+    cropId: structured.plant.cropId,
+    cropConfidence: structured.plant.confidence,
+    part: structured.plant.part,
+    structured,
+    raw: raw.trim()
   }
 }
 
-module.exports = { analyze, parseSubject, PARTS, isConfigured: () => !!config.openai.key }
+module.exports = {
+  analyze, parseSubject, extractJson, normalizeResult,
+  PARTS, CATEGORIES, CAUSES, STATUS, SEVERITY, QUALITY_ISSUES,
+  isConfigured: () => !!config.openai.key
+}

@@ -292,7 +292,8 @@ AS.renderScan = function (container, app) {
   }
 
   // ONE live AI call per scan, only when the remote provider is configured.
-  // Returns { findings, isPlant, message } or null when the real AI is not
+  // Returns the full structured /ai/analyze payload (plant, health, diagnosis,
+  // pest, treatment, care, image quality…) or null when the real AI is not
   // available (the caller then shows an honest "AI unavailable" sheet).
   const callAnalyze = async function (imgEl) {
     const prov = (AS.PROVIDER && AS.PROVIDER.get && AS.PROVIDER.get()) || { mode: 'builtin' }
@@ -301,11 +302,10 @@ AS.renderScan = function (container, app) {
       const dataUrl = await elementToDataUrl(imgEl, 1024)
       const hint = selectedCrop === 'auto' ? '' : (selectedCrop || '')
       const r = await AS.api.post('/ai/analyze', { dataUrl, lang, cropHint: hint })
-      if (!r) return null
-      if (r.isPlant === false) return { findings: '', isPlant: false, message: String(r.message || '') }
-      return r.findings
-        ? { findings: String(r.findings), isPlant: true, cropId: r.cropId || null, part: r.part || null }
-        : null
+      if (!r || r.error) return null
+      if (r.isPlant === false) return r
+      if (r.needBetterPhoto) return r
+      return (r.findings || (r.plant && r.plant.name)) ? r : null
     } catch (e) { return null }
   }
 
@@ -340,7 +340,8 @@ AS.renderScan = function (container, app) {
     try {
       const aiRes = await callAnalyze(imgEl)
       if (aiRes && aiRes.isPlant === false) { showNotPlantSheet(aiRes.message); shown = true; return }
-      if (aiRes && aiRes.findings) { showConfirmSheet(aiRes); shown = true; return }
+      if (aiRes && aiRes.needBetterPhoto) { showQualitySheet(aiRes.qualityMessage); shown = true; return }
+      if (aiRes && (aiRes.findings || (aiRes.plant && aiRes.plant.name))) { showConfirmSheet(aiRes); shown = true; return }
       showAiUnavailableSheet()
       shown = true
     } catch (e) {
@@ -388,16 +389,17 @@ AS.renderScan = function (container, app) {
   }
 
   // ---------- confirmation step ----------
-  // The AI names the crop AND the plant part it sees (leaf, seed, flower, root...)
-  // and asks the farmer to confirm before it gives the diagnosis. "Yes" reveals
-  // the findings; "No" lets the farmer pick the correct crop chip and scan again.
+  // The AI names the plant AND the part it sees (leaf, seed, flower, root…) and
+  // asks the farmer to confirm before it gives the diagnosis. "Yes" reveals the
+  // full structured result; "No" lets the farmer pick a crop chip and scan again.
   const showConfirmSheet = function (aiRes) {
-    // Nothing identifiable to confirm — go straight to the findings.
-    if (!aiRes.cropId && !aiRes.part) { showAiSheet(aiRes.findings, aiRes.cropId); return }
-    const cropName = aiRes.cropId && CROPS[aiRes.cropId]
-      ? (CROPS[aiRes.cropId][lang] || aiRes.cropId) : tr('scan_crop_unknown')
+    const plant = aiRes.plant || {}
+    const name = plant.name || (aiRes.cropId && CROPS[aiRes.cropId] ? (CROPS[aiRes.cropId][lang] || aiRes.cropId) : '')
     const part = partLabel(aiRes.part)
-    const ident = part ? (cropName + ' · ' + part) : cropName
+    // Nothing identifiable to confirm — go straight to the result.
+    if (!name && !part) { showAiSheet(aiRes); return }
+    const base = name || tr('scan_crop_unknown')
+    const ident = part ? (base + ' · ' + part) : base
 
     sheetHost.innerHTML = `
       <div class="sheet" id="sheet">
@@ -418,7 +420,7 @@ AS.renderScan = function (container, app) {
     const vf = $('#vf')
     if (vf) vf.style.opacity = '0.25'
     // "Yes" swaps in the diagnosis sheet (keeps the dimmed viewfinder behind it).
-    sheet.querySelector('#yesBtn').onclick = () => { showAiSheet(aiRes.findings, aiRes.cropId, aiRes.part) }
+    sheet.querySelector('#yesBtn').onclick = () => { showAiSheet(aiRes) }
     sheet.querySelector('#noBtn').onclick = () => {
       sheetHost.innerHTML = ''
       if (vf) vf.style.opacity = ''
@@ -427,36 +429,103 @@ AS.renderScan = function (container, app) {
     }
   }
 
-  // ---------- result sheet (real Crop AI Doctor findings) ----------
+  // ---------- result sheet (structured AI Crop Scanner diagnosis) ----------
   let sheetCrop = null
-  const showAiSheet = function (findings, identifiedCrop, identifiedPart) {
-    // The crop the AI actually saw wins. Fall back to a manually chosen hint.
-    // 'auto' with no identification = unknown crop (still show findings honestly).
+  const showAiSheet = function (aiRes) {
+    const esc = AS.esc
+    const plant = aiRes.plant || {}
+    const health = aiRes.health || {}
+    const dx = aiRes.diagnosis || {}
+    const primary = dx.primary || {}
+    const alts = Array.isArray(dx.alternatives) ? dx.alternatives : []
+    const symptoms = Array.isArray(dx.symptoms) ? dx.symptoms : []
+    const pest = aiRes.pest || {}
+    const treat = aiRes.treatment || {}
+    const prevention = Array.isArray(aiRes.prevention) ? aiRes.prevention : []
+    const care = aiRes.care || {}
+    const safety = Array.isArray(aiRes.chemicalSafety) ? aiRes.chemicalSafety : []
+    const warnings = Array.isArray(aiRes.warnings) ? aiRes.warnings : []
+    const conf = aiRes.confidence || ''
+    const summary = String(aiRes.findings || aiRes.summary || '')
+
+    // The catalog crop the AI actually saw wins (validated server-side); fall back
+    // to a manually chosen hint. 'auto' with no catalog match = a non-catalog plant
+    // (still fully identified by name, just no soil/RAB panel keyed to it).
+    const identifiedCrop = aiRes.cropId || null
     const effCrop = CROPS[identifiedCrop] ? identifiedCrop
       : (selectedCrop !== 'auto' && CROPS[selectedCrop] ? selectedCrop : null)
     sheetCrop = effCrop
-    const crop = effCrop ? (CROPS[effCrop] || {}) : {}
-    const cropName = effCrop ? (crop[lang] || effCrop) : tr('scan_crop_unknown')
-    // Honest note when the AI's identification disagrees with the farmer's hint.
+
+    const catalogName = effCrop ? (CROPS[effCrop][lang] || effCrop) : ''
+    const plantName = plant.name || catalogName || tr('scan_crop_unknown')
+    const sciName = plant.scientificName || ''
     const mismatch = effCrop && selectedCrop !== 'auto' && selectedCrop !== effCrop
-    lastResult = { crop: effCrop, findings }
+    lastResult = { crop: effCrop, findings: summary, plant: plantName }
     app.addHistory({ diseaseId: null, confidence: null, crop: effCrop })
 
-    // Field conditions: live weather (filled async) + RAB guide rates for the crop.
-    // Only shown when we have a concrete crop the soil/risk data is keyed by.
+    // ---- small renderers (all labels localised; every section optional) ----
+    const confLabel = c => tr('scan_conf_' + (c || 'low'))
+    const listHtml = items => (items && items.length)
+      ? `<ul class="dx-list">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''
+    const sec = (label, inner) => inner ? `<div class="dx-sec"><div class="dx-head">${esc(label)}</div>${inner}</div>` : ''
+    const isProblem = health.status === 'problem'
+
+    // meta row: overall confidence + severity + category + scientific name
+    const metaBits = []
+    if (conf) metaBits.push(`<span class="conf-badge ${esc(conf)}">${esc(confLabel(conf))}${primary.confidence != null ? ' · ' + primary.confidence + '%' : ''}</span>`)
+    if (isProblem && health.severity && health.severity !== 'none') metaBits.push(`<span class="sev-pill ${esc(health.severity)}">${esc(tr('scan_sev_' + health.severity))}</span>`)
+    if (plant.category) metaBits.push(`<span class="dx-tag">${esc(tr('scan_cat_' + plant.category))}</span>`)
+    if (sciName) metaBits.push(`<span class="dx-tag">${esc(sciName)}</span>`)
+    const metaHtml = metaBits.length ? `<div class="dx-meta">${metaBits.join('')}</div>` : ''
+
+    // primary diagnosis card (name, cause, scientific name, confidence bar)
+    const primaryHtml = primary.name ? (() => {
+      const pct = primary.confidence
+      const bar = pct != null ? `<div class="dxp-conf"><div class="dx-bar"><span style="width:${Math.max(4, Math.min(99, pct))}%"></span></div><span class="dx-pct">${pct}%</span></div>` : ''
+      const subBits = []
+      if (primary.cause && primary.cause !== 'unknown') subBits.push(tr('scan_cause_label') + ': ' + tr('scan_cause_' + primary.cause))
+      if (primary.scientificName) subBits.push(primary.scientificName)
+      const sub = subBits.length ? `<div class="dxp-sub">${esc(subBits.join(' · '))}</div>` : ''
+      return `<div class="dx-primary"><div class="dxp-title">${esc(primary.name)}</div>${sub}${bar}</div>`
+    })() : ''
+
+    // differential diagnosis (ranked alternatives with their own confidence)
+    const altHtml = alts.length ? `<div class="dx-primary" style="background:#fff">${alts.map(a => {
+      const cause = a.cause && a.cause !== 'unknown' ? tr('scan_cause_' + a.cause) : ''
+      return `<div class="dx-alt"><div class="da-name"><b>${esc(a.name)}</b>${cause ? `<span>${esc(cause)}</span>` : ''}</div>${a.confidence != null ? `<span class="da-pct">${a.confidence}%</span>` : ''}</div>`
+    }).join('')}</div>` : ''
+
+    // pest detection (only when the model actually saw a pest or clear damage)
+    const pestHtml = pest.detected
+      ? `<div class="dx-primary"><div class="dxp-title">${esc(pest.name || tr('scan_pest_label'))}${pest.scientificName ? ` <span style="font-weight:400;font-style:italic;color:var(--text-soft)">${esc(pest.scientificName)}</span>` : ''}</div>${pest.damage ? `<div class="dxp-sub">${esc(pest.damage)}</div>` : ''}</div>`
+      : ''
+
+    // treatment tiers: immediate / short-term / long-term (IPM-first, general)
+    const tier = (label, items) => (items && items.length) ? `<div class="dx-tier"><div class="dt-label">${esc(label)}</div>${listHtml(items)}</div>` : ''
+    const treatHtml = tier(tr('scan_treat_immediate'), treat.immediate) +
+      tier(tr('scan_treat_short'), treat.shortTerm) +
+      tier(tr('scan_treat_long'), treat.longTerm)
+
+    // care guidance for a healthy plant (only the fields the model could infer)
+    const careKeys = ['watering', 'sunlight', 'soil', 'fertilization', 'spacing', 'pruning', 'growthStage', 'pestMonitoring', 'harvest']
+    const careRows = careKeys.filter(k => care[k]).map(k => `<div class="care-row"><div class="cr-k">${esc(tr('scan_care_' + k))}</div><div class="cr-v">${esc(care[k])}</div></div>`).join('')
+    const careHtml = careRows ? `<div class="care-grid">${careRows}</div>` : ''
+
+    // Field conditions: live weather + RAB guide rates. Only for a concrete
+    // catalog crop the soil/risk data is keyed by (unchanged behaviour).
     const conditionsHtml = effCrop ? (() => {
       const soil = AS.soilFor(effCrop)
       return `
       <div class="cond-panel">
-        <div class="cond-title">${AS.esc(tr('scan_conditions'))}</div>
-        <div class="cond-wx" id="condWx">${AS.esc(tr('cond_wx_loading'))}</div>
+        <div class="cond-title">${esc(tr('scan_conditions'))}</div>
+        <div class="cond-wx" id="condWx">${esc(tr('cond_wx_loading'))}</div>
         <div class="cond-risk-host" id="condRisk"></div>
         <div class="cond-soil">
-          <div class="cond-row"><span>${AS.esc(tr('cond_ph'))}</span><b>${AS.esc(soil.ph.join('–'))}</b></div>
-          <div class="cond-row"><span>N</span><b>${AS.esc(soil.n.v)} ${AS.esc(soil.n.u)}</b></div>
-          <div class="cond-row"><span>P</span><b>${AS.esc(soil.p.v)} ${AS.esc(soil.p.u)}</b></div>
-          <div class="cond-row"><span>K</span><b>${AS.esc(soil.k.v)} ${AS.esc(soil.k.u)}</b></div>
-          <div class="cond-src">${AS.esc(tr('cond_guide_tag'))} · ${AS.esc(soil.src[lang])}</div>
+          <div class="cond-row"><span>${esc(tr('cond_ph'))}</span><b>${esc(soil.ph.join('–'))}</b></div>
+          <div class="cond-row"><span>N</span><b>${esc(soil.n.v)} ${esc(soil.n.u)}</b></div>
+          <div class="cond-row"><span>P</span><b>${esc(soil.p.v)} ${esc(soil.p.u)}</b></div>
+          <div class="cond-row"><span>K</span><b>${esc(soil.k.v)} ${esc(soil.k.u)}</b></div>
+          <div class="cond-src">${esc(tr('cond_guide_tag'))} · ${esc(soil.src[lang])}</div>
         </div>
       </div>`
     })() : ''
@@ -466,24 +535,36 @@ AS.renderScan = function (container, app) {
         <div class="sheet-handle"></div>
         <div class="sh-head">
           <div style="min-width:0">
-            <div class="sh-title">${AS.esc(tr('scan_ai_title'))}</div>
-            <div class="sh-sci">${AS.esc(cropName)}</div>
+            <div class="sh-title">${esc(tr('scan_ai_title'))}</div>
+            <div class="sh-sci">${esc(plantName)}</div>
           </div>
-          <span class="badge sev-low">${AS.icon('checkc', 13)} ${AS.esc(tr('scan_ai_live_badge'))}</span>
+          <span class="badge sev-low">${AS.icon('checkc', 13)} ${esc(tr('scan_ai_live_badge'))}</span>
         </div>
+        ${metaHtml}
         <div class="kv-grid">
-          <div class="kv"><div class="k">${AS.esc(tr('scan_kv_crop'))}</div><div class="v">${AS.esc(cropName)}</div></div>
-          ${identifiedPart ? `<div class="kv"><div class="k">${AS.esc(tr('scan_part_label'))}</div><div class="v">${AS.esc(partLabel(identifiedPart))}</div></div>` : ''}
-          <div class="kv"><div class="k">${AS.esc(tr('scan_kv_where'))}</div><div class="v">${AS.esc(AS.district(prefs.district)[lang])}</div></div>
+          <div class="kv"><div class="k">${esc(tr('scan_health_label'))}</div><div class="v">${esc(tr('scan_status_' + (health.status || 'unknown')))}</div></div>
+          ${aiRes.part ? `<div class="kv"><div class="k">${esc(tr('scan_part_label'))}</div><div class="v">${esc(partLabel(aiRes.part))}</div></div>` : ''}
+          <div class="kv"><div class="k">${esc(tr('scan_kv_where'))}</div><div class="v">${esc(AS.district(prefs.district)[lang])}</div></div>
         </div>
-        ${mismatch ? `<div class="scan-mismatch">${AS.icon('info', 15)} ${AS.esc(tr('scan_crop_mismatch').replace('%CROP%', cropName))}</div>` : ''}
-        <div class="ai-findings"><div class="af-head">${AS.esc(tr('scan_ai_findings'))}</div><div class="af-body">${AS.esc(findings)}</div></div>
+        ${mismatch ? `<div class="scan-mismatch">${AS.icon('info', 15)} ${esc(tr('scan_crop_mismatch').replace('%CROP%', plantName))}</div>` : ''}
+        ${summary ? `<div class="ai-findings"><div class="af-head">${esc(tr('scan_ai_findings'))}</div><div class="af-body">${esc(summary)}</div></div>` : ''}
+        ${sec(tr('scan_diagnosis_label'), primaryHtml)}
+        ${sec(tr('scan_symptoms_label'), listHtml(symptoms))}
+        ${sec(tr('scan_differential_label'), altHtml)}
+        ${dx.distinguishingInfo ? sec(tr('scan_distinguish_label'), `<div class="dx-warn" style="font-size:12.6px;line-height:1.5;color:var(--text)">${esc(dx.distinguishingInfo)}</div>`) : ''}
+        ${sec(tr('scan_pest_label'), pestHtml)}
+        ${sec(tr('scan_treatment_label'), treatHtml)}
+        ${sec(tr('result_prevention'), listHtml(prevention))}
+        ${sec(tr('scan_care_label'), careHtml)}
+        ${sec(tr('scan_safety_label'), listHtml(safety))}
+        ${warnings.length ? sec(tr('scan_warnings_label'), `<div class="dx-warn">${listHtml(warnings)}</div>`) : ''}
+        <div class="dx-note">${AS.icon('info', 15)} ${esc(tr('scan_not_confirmed'))}</div>
         ${conditionsHtml}
         <div class="sheet-actions">
-          <button class="btn-ghost" id="saveBtn">${AS.esc(tr('scan_save'))}</button>
-          <button class="btn-solid" id="doctorBtn">${AS.esc(tr('scan_ask_doctor'))}</button>
+          <button class="btn-ghost" id="saveBtn">${esc(tr('scan_save'))}</button>
+          <button class="btn-solid" id="doctorBtn">${esc(tr('scan_ask_doctor'))}</button>
         </div>
-        <p class="danger-note">${AS.esc(tr('result_disclaimer'))}</p>
+        <p class="danger-note">${esc(tr('result_disclaimer'))}</p>
       </div>`
 
     const sheet = sheetHost.querySelector('#sheet')
@@ -496,7 +577,7 @@ AS.renderScan = function (container, app) {
         crop: effCrop,
         disease: null,
         confidence: null,
-        meta: { district: prefs.district, source: hasLive() ? 'camera' : 'gallery', findings: String(findings).slice(0, 500) }
+        meta: { district: prefs.district, source: hasLive() ? 'camera' : 'gallery', findings: summary.slice(0, 500), plant: plantName, diagnosis: primary.name || null }
       })
       saveBtn.textContent = tr('scan_saved')
       saveBtn.style.color = 'var(--green-700)'
@@ -507,6 +588,35 @@ AS.renderScan = function (container, app) {
     if (vf) vf.style.opacity = '0.25'
 
     if (effCrop) fillConditions()
+  }
+
+  // The photo is too blurry / dark / far / low-resolution for a reliable answer.
+  // We never guess from a poor image — ask the farmer to retake it (spec point 6).
+  const showQualitySheet = function (message) {
+    lastResult = null
+    sheetHost.innerHTML = `
+      <div class="sheet" id="sheet">
+        <div class="sheet-handle"></div>
+        <div class="notplant">
+          <div class="np-ico">${AS.icon('warn', 40)}</div>
+          <div class="np-title">${AS.esc(tr('scan_quality_title'))}</div>
+          <div class="np-body">${AS.esc(message || tr('scan_quality_body'))}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="closeQ">${AS.esc(tr('scan_close'))}</button>
+          <button class="btn-solid" id="rescanQ">${AS.esc(tr('scan_retake'))}</button>
+        </div>
+      </div>`
+    const sheet = sheetHost.querySelector('#sheet')
+    const dismiss = () => {
+      sheetHost.innerHTML = ''
+      const vf = $('#vf')
+      if (vf) vf.style.opacity = ''
+    }
+    sheet.querySelector('#closeQ').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    sheet.querySelector('#rescanQ').onclick = () => { dismiss(); if (hasLive()) startHud() }
+    const vf = $('#vf')
+    if (vf) vf.style.opacity = '0.25'
   }
 
   // The live AI could not analyse the photo (provider not remote, or the call

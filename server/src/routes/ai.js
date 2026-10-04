@@ -293,12 +293,23 @@ router.post('/chat', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/ai/analyze  { dataUrl, lang, cropHint, caseId }
-// Runs vision analysis on a crop photo. Returns findings the client feeds back
+// Localised default "image not clear enough" advice, used when the vision model
+// flags the photo as insufficient but leaves its own advice blank (point 6 of the
+// scanner spec: never produce a confident diagnosis from a poor image).
+const QUALITY_MSG = {
+  en: 'The image is not clear enough for a reliable diagnosis. Please take a closer photo of the affected part of the plant in good natural light.',
+  rw: 'Ifoto ntabwo isobanutse bihagije ngo dutange igisubizo cyizewe. Nyamuneka fata ifoto yegereye y\'igice cyagizweho ingaruka cy\'ikimera, mu rumuri rwiza rwo hanze.'
+}
+
+// POST /api/ai/analyze  { dataUrl | dataUrls[], lang, cropHint, caseId }
+// Runs vision analysis on one or more plant photos. Returns a structured result
+// (plant / health / diagnosis + differential / pest / treatment / care / quality)
+// PLUS the legacy { findings, isPlant, cropId, part } fields the client feeds back
 // into /chat (ctx.scan) and stores as an image observation on the case.
 router.post('/analyze', requireAuth, async (req, res) => {
   const lang = req.body.lang === 'en' ? 'en' : 'rw'
   const dataUrl = String(req.body.dataUrl || '')
+  const dataUrls = Array.isArray(req.body.dataUrls) ? req.body.dataUrls.map(String) : null
   const cropHint = String(req.body.cropHint || '')
   const caseId = req.body.caseId ? Number(req.body.caseId) : null
 
@@ -307,7 +318,8 @@ router.post('/analyze', requireAuth, async (req, res) => {
 
   try {
     const crops = knowledge.cropVocabulary()
-    const { text, isPlant, cropId: rawCrop, cropConfidence, part } = await vision.analyze({ dataUrl, lang, cropHint, crops })
+    const { text, isPlant, cropId: rawCrop, cropConfidence, part, structured } =
+      await vision.analyze({ dataUrl, dataUrls, lang, cropHint, crops })
     // Not a plant: never fabricate a crop diagnosis. Tell the farmer plainly and
     // ask for a photo of the actual plant. No observation is stored on the case.
     if (!isPlant) {
@@ -324,19 +336,43 @@ router.post('/analyze', requireAuth, async (req, res) => {
     // Trust ONLY the crop the model identified from the image, and only if it is
     // one the app has data for. The farmer's hint never overrides the image (that
     // is exactly the wrong-crop bug we are fixing); if the id is unknown or
-    // unparseable we stay honest and return null rather than guessing.
+    // unparseable we stay honest and return null rather than guessing. The plant
+    // may still be identified by name even when it is not a catalog crop.
     const cropId = knowledge.isKnownCrop(rawCrop) ? rawCrop : null
+    structured.plant.cropId = cropId
+
+    const quality = structured.imageQuality || { sufficient: true, issues: [], advice: '' }
+    const needBetterPhoto = !quality.sufficient
+    const qualityMessage = needBetterPhoto ? (quality.advice || QUALITY_MSG[lang]) : ''
+
     if (caseId) {
       const c = await getCase(req.user.id, caseId)
       if (c) {
         await query(
           `INSERT INTO case_observations (case_id, user_id, kind, note, images)
            VALUES ($1, $2, 'image', $3, $4)`,
-          [c.id, req.user.id, clip(text, 1500), JSON.stringify([{ findings: clip(text, 1500) }])]
+          [c.id, req.user.id, clip(text, 1500), JSON.stringify([{
+            findings: clip(text, 1500),
+            scan: {
+              plant: structured.plant.name, cropId,
+              diagnosis: structured.diagnosis.primary.name,
+              confidence: structured.confidence, severity: structured.health.severity
+            }
+          }])]
         )
       }
     }
-    res.json({ findings: text, isPlant: true, cropId, cropConfidence: cropConfidence || '', part: part || null })
+    res.json({
+      // legacy / back-compat
+      findings: text, isPlant: true, cropId, cropConfidence: cropConfidence || '', part: part || null,
+      // image-quality gate (point 6): the client shows a retake sheet, not a diagnosis
+      needBetterPhoto, qualityMessage, imageQuality: quality,
+      // structured result (points 7, 9, 12, 13, 14, 15, 20, 28)
+      plant: structured.plant, health: structured.health, diagnosis: structured.diagnosis,
+      pest: structured.pest, treatment: structured.treatment, prevention: structured.prevention,
+      care: structured.care, chemicalSafety: structured.chemicalSafety,
+      warnings: structured.warnings, confidence: structured.confidence, summary: structured.summary
+    })
   } catch (err) {
     console.error('[ai/analyze] upstream failure:', err.code || 'upstream', err.message)
     res.status(502).json({

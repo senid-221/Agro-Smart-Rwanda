@@ -507,6 +507,50 @@ body {
 .sheet .alt-title { font-size: 13px; font-weight: 700; color: var(--text); margin: 16px 0 8px; }
 .sheet .danger-note { margin-top: 14px; }
 
+/* ---------- universal AI crop scanner: structured diagnosis ---------- */
+.dx-plant { margin: 10px 0 2px; }
+.dx-plant .dxp-name { font-size: 19px; font-weight: 800; color: var(--text); line-height: 1.2; }
+.dx-plant .dxp-sci { font-size: 12px; font-style: italic; color: var(--text-soft); margin-top: 1px; }
+.dx-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 9px 0 2px; }
+.dx-tag { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--text-soft); }
+.conf-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 999px; }
+.conf-badge.high { background: var(--green-100); color: var(--green-700); }
+.conf-badge.moderate { background: var(--gold-100); color: #9a7b00; }
+.conf-badge.low { background: var(--orange-100); color: var(--orange-deep); }
+.sev-pill { font-size: 11.5px; font-weight: 800; padding: 5px 11px; border-radius: 999px; }
+.sev-pill.none, .sev-pill.low { background: var(--green-100); color: var(--green-700); }
+.sev-pill.moderate { background: var(--gold-100); color: #9a7b00; }
+.sev-pill.high { background: var(--orange-100); color: var(--orange-deep); }
+.sev-pill.critical { background: var(--red-100); color: var(--red); }
+.dx-sec { margin-top: 16px; }
+.dx-head { font-size: 11.5px; font-weight: 800; color: var(--green-700); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 7px; }
+.dx-primary { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; }
+.dx-primary .dxp-title { font-size: 15px; font-weight: 800; color: var(--text); }
+.dx-primary .dxp-sub { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+.dx-primary .dxp-conf { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
+.dx-bar { flex: 1; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.dx-bar > span { display: block; height: 100%; border-radius: 99px; background: var(--green-500); }
+.dx-pct { font-size: 12px; font-weight: 800; color: var(--text-soft); flex: none; }
+.dx-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.dx-list li { position: relative; padding-left: 15px; font-size: 12.8px; line-height: 1.5; color: var(--text); }
+.dx-list li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--green-500); }
+.dx-alt { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.dx-alt:first-child { border-top: none; }
+.dx-alt .da-name { flex: 1; min-width: 0; }
+.dx-alt .da-name b { display: block; font-size: 13px; font-weight: 700; color: var(--text); }
+.dx-alt .da-name span { font-size: 11.5px; color: var(--text-soft); }
+.dx-alt .da-pct { font-size: 12.5px; font-weight: 800; color: var(--text-soft); flex: none; }
+.dx-tier { margin-bottom: 11px; }
+.dx-tier:last-child { margin-bottom: 0; }
+.dx-tier .dt-label { font-size: 11px; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 5px; }
+.care-grid { display: flex; flex-direction: column; gap: 7px; }
+.care-row { display: flex; gap: 10px; font-size: 12.6px; line-height: 1.45; }
+.care-row .cr-k { flex: none; width: 98px; color: var(--text-soft); font-weight: 600; }
+.care-row .cr-v { flex: 1; color: var(--text); }
+.dx-note { margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; background: var(--amber-100, #fff4d6); color: var(--amber-900, #7a4b00); border: 1px solid var(--amber-300, #f0c36d); border-radius: 12px; padding: 10px 12px; font-size: 12.3px; line-height: 1.45; }
+.dx-note svg { flex: none; margin-top: 1px; }
+.dx-warn { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+
 /* ---------- alerts ---------- */
 .al-card {
   display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left;

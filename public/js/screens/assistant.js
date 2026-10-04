@@ -141,7 +141,7 @@ AS.renderAssistant = function (container, app) {
         <button class="wa-send" id="chatSend" aria-label="${tr('assistant_send')}">🎤</button>
       </div>
       <div class="wa-powered">Powered by IRAGUHA Vincent</div>
-      ${isRemote ? `<input type="file" id="photoInput" accept="image/*" class="hidden" />` : ''}
+      ${isRemote ? `<input type="file" id="photoInput" accept="image/*" multiple class="hidden" />` : ''}
     </div>
   `
 
@@ -348,23 +348,67 @@ AS.renderAssistant = function (container, app) {
   // Once the Doctor answers, earlier farmer messages count as read (blue ticks).
   function markRead() { chatLog.forEach(m => { if (m.who === 'user') m.read = true }) }
 
-  // Photo → vision analysis → findings bubble, fed into the next chat turn.
-  async function analyzePhoto(file) {
-    if (!file) return
-    let dataUrl
-    try { dataUrl = await fileToDataUrl(file) } catch { alert(tr('assistant_vision_error')); return }
+  // Compact, plain-text structured summary of a scan — used both for the chat
+  // bubble and as the Doctor's ctx.scan evidence. General guidance only; it never
+  // carries a product name or dose (those come only from the verified-products gate
+  // in the agronomist reply), so the no-fabrication doctrine holds.
+  function scanContextText(res) {
+    const L = []
+    const plant = res.plant || {}
+    const health = res.health || {}
+    const dx = res.diagnosis || {}
+    const pr = dx.primary || {}
+    const alts = Array.isArray(dx.alternatives) ? dx.alternatives : []
+    const pest = res.pest || {}
+    const treat = res.treatment || {}
+    const summary = String(res.summary || res.findings || '')
+    if (summary) L.push(summary)
+    const nameLine = [plant.name, plant.scientificName ? '(' + plant.scientificName + ')' : ''].filter(Boolean).join(' ')
+    if (nameLine) L.push(`${tr('scan_plant_label')}: ${nameLine}${plant.part ? ' · ' + tr('scan_part_' + plant.part) : ''}`)
+    if (health.status) {
+      const sev = health.severity && health.severity !== 'none' ? ` · ${tr('scan_severity_label')}: ${tr('scan_sev_' + health.severity)}` : ''
+      L.push(`${tr('scan_health_label')}: ${tr('scan_status_' + health.status)}${sev}`)
+    }
+    if (pr.name) {
+      const cause = pr.cause && pr.cause !== 'unknown' ? ` (${tr('scan_cause_' + pr.cause)})` : ''
+      const pct = pr.confidence != null ? ` · ${pr.confidence}%` : ''
+      const band = res.confidence ? ` · ${tr('scan_confidence_label')}: ${tr('scan_conf_' + res.confidence)}` : ''
+      L.push(`${tr('scan_diagnosis_label')}: ${pr.name}${cause}${pct}${band}`)
+    }
+    if (alts.length) L.push(`${tr('scan_differential_label')}: ` + alts.map(a => a.name + (a.confidence != null ? ` (${a.confidence}%)` : '')).join(', '))
+    if (Array.isArray(dx.symptoms) && dx.symptoms.length) L.push(`${tr('scan_symptoms_label')}: ` + dx.symptoms.join('; '))
+    if (pest.detected) L.push(`${tr('scan_pest_label')}: ` + [pest.name, pest.damage].filter(Boolean).join(' — '))
+    const imm = Array.isArray(treat.immediate) ? treat.immediate.slice(0, 3) : []
+    if (imm.length) L.push(`${tr('scan_treat_immediate')}: ` + imm.join('; '))
+    return L.join('\n')
+  }
+
+  // Photo(s) → vision analysis → structured findings bubble, fed into the next chat
+  // turn. A farmer may select several photos of the SAME plant at once (whole plant,
+  // affected leaf, pest…); the evidence is combined server-side. A single photo
+  // still works exactly as before.
+  async function analyzePhoto(files) {
+    const list = Array.from(files || []).filter(Boolean).slice(0, 4)
+    if (!list.length) return
+    let dataUrls
+    try { dataUrls = await Promise.all(list.map(f => fileToDataUrl(f))) } catch { alert(tr('assistant_vision_error')); return }
     setTyping(true)
     const busy = typingRow()
     log.appendChild(busy); log.scrollTop = log.scrollHeight
     const res = await AS.api.post('/ai/analyze', {
-      dataUrl, lang: app.lang, cropHint: (activeCase && activeCase.crop) || '', caseId: activeCase ? activeCase.id : null
+      dataUrls, lang: app.lang, cropHint: (activeCase && activeCase.crop) || '', caseId: activeCase ? activeCase.id : null
     })
     killTyping(busy); setTyping(false)
-    if (res && res.findings) {
-      pendingScan = res.findings
-      chatLog.push({ who: 'ai', text: `📷 ${tr('assistant_photo_findings')}\n${res.findings}`, at: Date.now() })
+    if (res && res.isPlant === false) {
+      chatLog.push({ who: 'ai', text: res.message || tr('assistant_vision_error'), at: Date.now() })
+    } else if (res && res.needBetterPhoto) {
+      chatLog.push({ who: 'ai', text: `📷 ${res.qualityMessage || tr('assistant_vision_error')}`, at: Date.now() })
+    } else if (res && (res.findings || (res.plant && res.plant.name))) {
+      const block = scanContextText(res)
+      pendingScan = block
+      chatLog.push({ who: 'ai', text: `📷 ${tr('assistant_photo_findings')}\n${block}`, at: Date.now() })
     } else {
-      chatLog.push({ who: 'ai', text: tr('assistant_vision_error'), at: Date.now() })
+      chatLog.push({ who: 'ai', text: (res && res.message) || tr('assistant_vision_error'), at: Date.now() })
     }
     drawLog()
   }
@@ -372,7 +416,7 @@ AS.renderAssistant = function (container, app) {
   if (isRemote) {
     const photoInput = container.querySelector('#photoInput')
     container.querySelector('#photoBtn').onclick = () => photoInput.click()
-    photoInput.onchange = e => { analyzePhoto(e.target.files[0]); photoInput.value = '' }
+    photoInput.onchange = e => { analyzePhoto(e.target.files); photoInput.value = '' }
   }
 
   async function send(text, viaVoice) {
