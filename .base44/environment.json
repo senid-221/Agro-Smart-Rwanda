@@ -1,0 +1,38 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "JWT_SECRET",
+      "description": "Server-side secret used to sign login/session JWT tokens. A development value is auto-generated; override only if you want a specific one.",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "description": "OpenAI API key (platform.openai.com → API keys). Enables the AI chat and the Crop Doctor photo diagnosis. Optional — the app runs without it.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "TAVILY_API_KEY",
+      "description": "Tavily search API key (app.tavily.com). Enables live web research for the Crop Doctor. Optional.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "PAYSTACK_SECRET_KEY",
+      "description": "Paystack secret key (dashboard.paystack.com → Settings → API Keys). Enables real RWF mobile-money/card checkout. Optional — checkout runs as record-intent only without it.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "PAYSTACK_PUBLIC_KEY",
+      "description": "Paystack public key, paired with PAYSTACK_SECRET_KEY. Optional.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "GOOGLE_CLIENT_ID",
+      "description": "Google OAuth Web client ID (Google Cloud Console → Credentials). Enables 'Sign in with Google'. Optional.",
+      "requiredAtBoot": false
+    }
+  ]
+}
