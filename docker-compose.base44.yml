@@ -1,0 +1,52 @@
+# Base44 development environment for AgroSmart Rwanda.
+# Single-origin stack: the Express server serves both the API and the static
+# frontend from the bind-mounted repo (live edits, node --watch reload).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agrosmart
+      POSTGRES_PASSWORD: agrosmart-dev
+      POSTGRES_DB: agrosmart
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrosmart -d agrosmart"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    restart: on-failure
+
+  web:
+    image: node:20-bookworm-slim
+    working_dir: /app/server
+    volumes:
+      - .:/app
+    ports:
+      - "3000:8080"
+    environment:
+      PORT: "8080"
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: agrosmart
+      DB_PASSWORD: agrosmart-dev
+      DB_NAME: agrosmart
+    env_file:
+      - path: ./.env.base44-defaults   # committed placeholders first — real secrets always win
+      - path: /run/base44/app.env
+        required: false
+    command: ["sh", "-ec", "npm install --no-audit --no-fund && exec node --watch src/index.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)throw new Error('health status '+r.status)}).catch(e=>{console.error('healthcheck failed:',e.message);process.exit(1)})\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: on-failure
+
+volumes:
+  dbdata:
