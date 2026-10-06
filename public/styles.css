@@ -1253,3 +1253,16 @@ body {
 .mtg-composer { gap: 6px; }
 .mtg-ai { flex: 0 0 auto; }
 .mtg-ai.busy { opacity: .5; pointer-events: none; }
+
+/* ---- News screen (live, searched) ---- */
+.news-brief { display: flex; gap: 10px; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-radius: 14px; padding: 13px 14px; margin-bottom: 14px; }
+.news-brief .nb-ico { flex: 0 0 auto; color: var(--green, #2d7a2e); margin-top: 1px; }
+.news-brief .nb-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.news-brief .nb-title { font-size: 12px; font-weight: 700; color: var(--green, #2d7a2e); }
+.news-brief .nb-text { font-size: 13.5px; line-height: 1.5; color: var(--text, #333); }
+.news-list { display: flex; flex-direction: column; gap: 10px; }
+.news-card { display: flex; flex-direction: column; gap: 4px; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-radius: 14px; padding: 12px 14px; text-decoration: none; color: inherit; }
+.news-card:active { opacity: .7; }
+.news-card .nc-title { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.news-card .nc-snippet { font-size: 12.5px; line-height: 1.45; color: var(--text-soft, #666); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.news-card .nc-meta { font-size: 11px; color: var(--green, #2d7a2e); font-weight: 600; margin-top: 2px; }

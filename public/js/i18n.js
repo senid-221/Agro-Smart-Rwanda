@@ -57,6 +57,8 @@ AS.T = {
   tool_community_d: { en: 'Ask farmers, share answers', rw: 'Baza abahinzi, sangira ibisubizo' },
   tool_map: { en: 'Farm Map', rw: 'Ikarita' },
   tool_map_d: { en: 'Your location, district & cases on a real map', rw: 'Aho uri, akarere n\'ibibazo ku ikarita nyayo' },
+  tool_news: { en: 'Agri News', rw: 'Amakuru y\'Ubuhinzi' },
+  tool_news_d: { en: 'Live farming news & AI briefing', rw: 'Amakuru y\'ubuhinzi ahubeho n\'inama ya AI' },
   home_discover: { en: 'Discover Agro AI', rw: 'Menya Agro AI' },
   discover_scan_t: { en: 'See a sick plant? Scan it.', rw: 'Urabona igihingwa kirwaye? Gisuzume.' },
   discover_scan_d: { en: 'The camera reads the leaf and the AI names the disease and the medicine.', rw: 'Kamera isoma ibabi hanyuma AI ikavuga indwara n\'umuti.' },
@@ -835,7 +837,19 @@ AS.T = {
 
   back: { en: '← Back', rw: '← Inyuma' },
   close: { en: 'Close', rw: 'Funga' },
-  remove: { en: 'Remove', rw: 'Kuraho' }
+  remove: { en: 'Remove', rw: 'Kuraho' },
+
+  // ---- News (live, searched) ----
+  news_title: { en: 'Agri News', rw: 'Amakuru y\'Ubuhinzi' },
+  news_sub: { en: 'Live, searched & analysed', rw: 'Ahubeho, ashyizwe mu murongo' },
+  news_refresh: { en: 'Refresh', rw: 'Kugira gishya' },
+  news_loading: { en: 'Searching the latest farming news…', rw: 'Gushakisha amakuru mashya y\'ubuhinzi…' },
+  news_fail: { en: 'Could not load news right now. Try again.', rw: 'Amakuru ntabwo yashoboye kuboneka. Ongera ugerageze.' },
+  news_empty: { en: 'No recent farming news found. Try again later.', rw: 'Nta makuru mashya y\'ubuhinzi abonetse. Ongera nyuma.' },
+  news_brief_title: { en: 'AI briefing', rw: 'Inama ya AI' },
+  news_latest: { en: 'Latest stories', rw: 'Amakuru aheruka' },
+  news_searched_live: { en: 'Searched live', rw: 'Yashakuwe ahubeho' },
+  news_source: { en: 'Headlines come from live web search; tap a story to read it in full.', rw: 'Amakuru avuye mu shakisha rya interineti; kanda inkuru uyisome yose.' }
 }
 
 AS.makeT = function (lang) {
