@@ -49,7 +49,8 @@
     mic: '<rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
     send: '<path d="M21.5 2.5 2.5 10l7.5 3 3 7.5z"/><path d="M21.5 2.5 10 13"/>',
     star: '<path d="m12 3 2.7 5.7 6.3.8-4.6 4.4 1.2 6.2L12 17.1 6.4 20.1l1.2-6.2L3 9.5l6.3-.8z"/>',
-    grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>'
+    grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
+    refresh: '<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M18 3.5V7h-3.5"/>'
   }
 
   AS.ICONS = P

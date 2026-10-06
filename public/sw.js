@@ -1,4 +1,4 @@
-const CACHE = 'agrosmart-v50'
+const CACHE = 'agrosmart-v51'
 const ASSETS = [
   '/', '/index.html', '/styles.css', '/manifest.webmanifest', '/icon.png', '/icon-192.png', '/icon-512.png',
   '/js/app.js', '/js/ui.js', '/js/i18n.js', '/js/db.js', '/js/custom.js', '/js/api.js', '/js/ai.js', '/js/research.js', '/js/engine/detector.js',
@@ -7,7 +7,8 @@ const ASSETS = [
   '/js/screens/library.js', '/js/screens/fertilizer.js', '/js/screens/store.js',
   '/js/screens/assistant.js', '/js/screens/case.js', '/js/screens/dashboard.js', '/js/screens/alerts.js',
   '/js/screens/weather.js', '/js/screens/map.js', '/js/screens/community.js', '/js/screens/expert.js',
-  '/js/screens/admin.js', '/js/screens/settings.js', '/js/screens/warroom.js'
+  '/js/screens/admin.js', '/js/screens/settings.js', '/js/screens/warroom.js',
+  '/js/screens/news.js'
 ]
 
 self.addEventListener('install', e => {

@@ -5,7 +5,7 @@ const {
   renderLibrary, renderDiseaseDetail, renderFertilizer, renderFertilizerDetail,
   renderSettings, renderOnboarding, renderLogin, renderStore, renderCart, renderOrders,
   renderAssistant, renderCase, renderDashboard, renderAdmin, renderAlerts, renderWeather,
-  renderCommunity, renderExpert, renderMap, renderAgronomist, renderMeeting
+  renderCommunity, renderExpert, renderMap, renderAgronomist, renderMeeting, renderNews
 } = AS
 
 const state = {
@@ -24,6 +24,7 @@ const ROUTES = {
   home: { screen: 'home', render: c => renderHome(c, app) },
   scan: { screen: 'scan', render: c => renderScan(c, app) },
   alerts: { screen: 'alerts', render: c => renderAlerts(c, app) },
+  news: { screen: 'news', render: c => renderNews(c, app) },
   learn: { screen: 'learn', render: c => renderLearn(c, app) },
   lesson: { screen: 'learn', render: c => renderLessonDetail(c, app, state.route.params.id) },
   crops: { screen: 'learn', render: c => renderCrops(c, app) },
@@ -63,6 +64,7 @@ const ROUTE_TITLE = {
   map: 'map_title',
   community: 'cm_title', expert: 'ex_title',
   agronomist: 'agro_title', meeting: 'mtg_title',
+  news: 'news_title',
   settings: 'nav_settings'
 }
 
