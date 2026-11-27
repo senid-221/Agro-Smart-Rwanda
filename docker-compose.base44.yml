@@ -1,0 +1,77 @@
+# Hindura — mobile number portability (MNP) for Rwanda.
+# Runs the app from the cloned source (node --watch + mounted repo) against a
+# local PostgreSQL, so edits show up without rebuilding images.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hindura
+      POSTGRES_PASSWORD: hindura_local_pw
+      POSTGRES_DB: hindura
+    volumes:
+      - hindura_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hindura -d hindura"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: on-failure
+
+  # One-shot schema creation, then exits.
+  migrate:
+    image: node:22-bookworm-slim
+    working_dir: /app/portability
+    volumes:
+      - ./:/app
+    command: ["sh", "-ec", "npm install --no-audit --no-fund --prefer-offline && node src/migrate.js"]
+    environment:
+      - PGHOST=db
+      - PGPORT=5432
+      - PGUSER=hindura
+      - PGPASSWORD=hindura_local_pw
+      - PGDATABASE=hindura
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    image: node:22-bookworm-slim
+    working_dir: /app/portability
+    volumes:
+      - ./:/app
+    command: ["sh", "-ec", "npm install --no-audit --no-fund --prefer-offline && exec node --watch src/index.js"]
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      # Platform-provided; enables the dev live-reload stream. Unset/0 keeps
+      # production behaviour (no watcher, PWA service worker active).
+      - BASE44_PREVIEW_MODE
+      # Local database credentials (infrastructure, not user secrets).
+      - PGHOST=db
+      - PGPORT=5432
+      - PGUSER=hindura
+      - PGPASSWORD=hindura_local_pw
+      - PGDATABASE=hindura
+    env_file:
+      # Development placeholders first; platform secrets last so the user's
+      # dashboard values always win.
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+    restart: on-failure
+
+volumes:
+  hindura_pgdata:

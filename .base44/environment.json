@@ -1,0 +1,17 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "MNP_ADMIN_EMAIL",
+      "description": "Staff email for the Hindura back office (defaults to admin@hindura.rw in .env.base44-defaults)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "MNP_ADMIN_PASSWORD",
+      "description": "Staff password for the Hindura back office (development default is in .env.base44-defaults; set a real one before production)",
+      "requiredAtBoot": false
+    }
+  ]
+}

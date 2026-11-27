@@ -1,0 +1,7 @@
+node_modules/
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.base44-defaults
+portability/node_modules/

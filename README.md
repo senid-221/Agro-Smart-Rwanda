@@ -109,6 +109,29 @@ public/
     screens/           home, scan, learn, library, fertilizer, store, assistant, dashboards, settings
 ```
 
+## Hindura — mobile number portability (MNP)
+
+`portability/` is a second, self-contained mobile web app built for Rwanda's
+Cabinet-approved number-portability programme (26 November 2026): a subscriber
+switches operator, keeps the same phone number, and keeps the same Mobile Money
+account.
+
+- **Public app** — landing/explainer, eligibility check by number, a 4-step
+  switch request (number → new operator → details → confirm), a tracking page
+  with a status timeline, and the full Cabinet-decision explainer.
+- **Back office** (`#/admin`) — staff sign-in, request queue with filters and
+  search, approve / reject / complete actions, and status statistics.
+- **Kinyarwanda + English**, mobile-first PWA, no build step.
+- **Express + PostgreSQL** API (`portability/src`) with server-side validation,
+  one active request per number, a 90-day re-port lock and an audit trail.
+
+```bash
+docker compose -f docker-compose.base44.yml up -d   # app on http://localhost:3000
+```
+
+Staff login defaults to `admin@hindura.rw` / `Hindura2026!` (override with
+`MNP_ADMIN_EMAIL` / `MNP_ADMIN_PASSWORD`).
+
 ## Notes
 
 - The detection engine runs fully on-device (color-pattern analysis + knowledge-base
