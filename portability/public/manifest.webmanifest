@@ -1,0 +1,15 @@
+{
+  "name": "Hindura — Guhindura sosiyete utahinduye nimero",
+  "short_name": "Hindura",
+  "description": "Guhindura sosiyete y'itumanaho ugumanye nimero yawe na konti ya Mobile Money.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7fa",
+  "theme_color": "#0b4fa8",
+  "lang": "rw",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
